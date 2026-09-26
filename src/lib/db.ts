@@ -17,7 +17,7 @@ function normalize<T>(rows: Record<string, unknown>[]): T[] {
   for (const row of rows) {
     for (const k in row) {
       const v = row[k];
-      if (typeof v === "string" && /^-?d+$/.test(v) && NUMERIC_COLUMNS.has(k)) row[k] = Number(v);
+      if (typeof v === "string" && /^-?\d+$/.test(v) && NUMERIC_COLUMNS.has(k)) row[k] = Number(v);
     }
   }
   return rows as T[];
