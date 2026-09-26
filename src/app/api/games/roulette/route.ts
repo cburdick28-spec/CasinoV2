@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonError, requireUser } from "@/lib/api";
-import { addMoney, recordGame } from "@/lib/account";
+import { addMoney, deductBet, isDevAccount, recordGame } from "@/lib/account";
 import { randInt } from "@/lib/rng";
 import { MAX_BET } from "@/lib/vip";
 
@@ -87,7 +87,7 @@ function betWins(bet: Bet, spin: number): boolean {
 export async function POST(req: NextRequest) {
   const result = await requireUser();
   if ("error" in result) return result.error;
-  const { user, money } = result;
+  const { user } = result;
 
   const body = await req.json().catch(() => null);
   const bets: Bet[] = Array.isArray(body?.bets) ? body.bets : [];
@@ -103,7 +103,8 @@ export async function POST(req: NextRequest) {
     }
     totalBet += Math.floor(amt);
   }
-  if (totalBet > money || totalBet > MAX_BET) return jsonError("Bet exceeds balance");
+  if (totalBet > MAX_BET) return jsonError("Bet exceeds balance");
+  if (!(await deductBet(user.id, totalBet, isDevAccount(user)))) return jsonError("Bet exceeds balance");
 
   const spin = randInt(0, 36);
   let totalPayout = 0;
@@ -116,7 +117,7 @@ export async function POST(req: NextRequest) {
   });
 
   const won = totalPayout > 0;
-  await addMoney(user.id, totalPayout - totalBet);
+  if (totalPayout > 0) await addMoney(user.id, totalPayout);
   await recordGame(user.id, "\u{1F3A1} Roulette", won, totalBet, totalPayout);
 
   return NextResponse.json({

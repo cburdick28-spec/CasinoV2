@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clampBet, jsonError, requireUser } from "@/lib/api";
-import { addMoney, recordGame, unlockAchievement } from "@/lib/account";
+import { addMoney, deductBet, isDevAccount, recordGame, unlockAchievement } from "@/lib/account";
 import { randInt } from "@/lib/rng";
 import { MAX_BET } from "@/lib/vip";
 
@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
   const bet = clampBet(body?.bet, money, MAX_BET);
   const risk = ["low", "medium", "high"].includes(body?.risk) ? body.risk : "medium";
   if (bet === null) return jsonError("Invalid bet amount");
+  if (!(await deductBet(user.id, bet, isDevAccount(user)))) return jsonError("Not enough balance");
 
   const path: number[] = [];
   let bucket = 0;
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
   const payout = Math.floor(bet * multiplier);
   const won = payout > bet;
 
-  await addMoney(user.id, payout - bet);
+  if (won) await addMoney(user.id, payout);
   await recordGame(user.id, "\u{1F3B3} Plinko", won, bet, payout);
   if (multiplier === Math.max(...table)) await unlockAchievement(user.id, "plinko_max");
 

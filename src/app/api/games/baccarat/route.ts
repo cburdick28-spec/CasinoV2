@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clampBet, jsonError, requireUser } from "@/lib/api";
-import { addMoney, recordGame } from "@/lib/account";
+import { addMoney, deductBet, isDevAccount, recordGame } from "@/lib/account";
 import { baccaratHandTotal, buildDeck } from "@/lib/cards";
 import { MAX_BET } from "@/lib/vip";
 import type { Card } from "@/lib/types";
@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
   const side = body?.side === "banker" || body?.side === "tie" ? body.side : "player";
   const bet = clampBet(body?.bet, money, MAX_BET);
   if (bet === null) return jsonError("Invalid bet amount");
+  if (!(await deductBet(user.id, bet, isDevAccount(user)))) return jsonError("Not enough balance");
 
   const deck: Card[] = buildDeck();
   const player: Card[] = [deck.pop()!, deck.pop()!];
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
 
   const won = payout > bet;
   const push = payout === bet;
-  await addMoney(user.id, payout - bet);
+  if (payout > 0) await addMoney(user.id, payout);
   await recordGame(user.id, "\u{1F0CF} Baccarat", won, bet, payout, push);
 
   return NextResponse.json({

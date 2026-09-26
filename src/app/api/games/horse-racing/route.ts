@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clampBet, jsonError, requireUser } from "@/lib/api";
-import { addMoney, recordGame } from "@/lib/account";
+import { addMoney, deductBet, isDevAccount, recordGame } from "@/lib/account";
 import { randInt } from "@/lib/rng";
 import { MAX_BET } from "@/lib/vip";
 
@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
   if (!Number.isInteger(horseIdx) || horseIdx < 0 || horseIdx >= HORSES.length) {
     return jsonError("Invalid horse selection");
   }
+  if (!(await deductBet(user.id, bet, isDevAccount(user)))) return jsonError("Not enough balance");
 
   const positions = new Array(HORSES.length).fill(0);
   const finished = new Array(HORSES.length).fill(false);
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
   const won = winnerIdx === horseIdx;
   const payout = won ? Math.floor(bet * HORSES[horseIdx].odds) : 0;
 
-  await addMoney(user.id, payout - bet);
+  if (won) await addMoney(user.id, payout);
   await recordGame(user.id, "\u{1F407} Horse Racing", won, bet, payout);
 
   return NextResponse.json({

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clampBet, jsonError, requireUser } from "@/lib/api";
-import { addMoney, clearGameState, getGameState, recordGame, setGameState, unlockAchievement } from "@/lib/account";
+import { addMoney, clearGameState, deductBet, getGameState, isDevAccount, recordGame, setGameState, unlockAchievement } from "@/lib/account";
 import { generateCrashPoint, multiplierAt } from "@/lib/games/crash";
 import { MAX_BET } from "@/lib/vip";
 
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     if (existing) return jsonError("Round already in progress");
     const bet = clampBet(body?.bet, money, MAX_BET);
     if (bet === null) return jsonError("Invalid bet amount");
-    await addMoney(user.id, -bet);
+    if (!(await deductBet(user.id, bet, isDevAccount(user)))) return jsonError("Not enough balance");
     const state: CrashState = { bet, crashPoint: generateCrashPoint(), startTime: Date.now() };
     await setGameState(user.id, GAME, state);
     return NextResponse.json({ started: true, balance: await addMoney(user.id, 0) });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clampBet, jsonError, requireUser } from "@/lib/api";
-import { addMoney, clearGameState, getGameState, recordGame, setGameState, unlockAchievement } from "@/lib/account";
+import { addMoney, clearGameState, deductBet, getGameState, isDevAccount, recordGame, setGameState, unlockAchievement } from "@/lib/account";
 import { buildDeck } from "@/lib/cards";
 import { evaluateHand, handName } from "@/lib/poker";
 import { MAX_BET } from "@/lib/vip";
@@ -59,10 +59,10 @@ export async function POST(req: NextRequest) {
   if (action === "deal") {
     const bet = clampBet(body?.bet, money, MAX_BET);
     if (bet === null) return jsonError("Invalid ante amount");
+    if (!(await deductBet(user.id, bet, isDevAccount(user)))) return jsonError("Not enough balance");
     const deck = buildDeck();
     const player = [deck.pop()!, deck.pop()!];
     const dealer = [deck.pop()!, deck.pop()!];
-    await addMoney(user.id, -bet);
     state = { deck, player, dealer, community: [], bet, pot: bet * 2, stage: "preflop" };
     await setGameState(user.id, GAME, state);
     return NextResponse.json({ state: serialize(state, false), balance: await addMoney(user.id, 0) });
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
   if (action === "raise") {
     const raise = clampBet(body?.amount, money, MAX_BET);
     if (raise === null) return jsonError("Invalid raise amount");
-    await addMoney(user.id, -raise);
+    if (!(await deductBet(user.id, raise, isDevAccount(user)))) return jsonError("Not enough balance");
     state.pot += raise;
     state.bet += raise;
   } else if (action !== "check") {

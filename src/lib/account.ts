@@ -41,6 +41,21 @@ export async function addMoney(userId: number, delta: number) {
   return row?.money ?? 0;
 }
 
+// Atomically deducts a bet only if the balance still covers it, so two
+// concurrent requests from the same user can't both pass a stale balance
+// check and drive the balance negative. Returns false (no-op) on failure.
+export async function deductBet(userId: number, amount: number, isDev: boolean): Promise<boolean> {
+  const bet = Math.floor(amount);
+  if (bet <= 0) return true;
+  const rows = await all<{ money: number }>(
+    "UPDATE users SET money = money - ? WHERE id = ? AND (? OR money >= ?) RETURNING money",
+    [bet, userId, isDev, bet]
+  );
+  if (rows.length === 0) return false;
+  await checkVipAchievements(userId, rows[0].money);
+  return true;
+}
+
 export async function setMoney(userId: number, value: number) {
   await run("UPDATE users SET money = ? WHERE id = ?", [Math.floor(value), userId]);
   await checkVipAchievements(userId, value);

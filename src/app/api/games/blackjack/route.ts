@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clampBet, jsonError, requireUser } from "@/lib/api";
-import { addMoney, clearGameState, getGameState, recordGame, setGameState, unlockAchievement } from "@/lib/account";
+import { addMoney, clearGameState, deductBet, getGameState, isDevAccount, recordGame, setGameState, unlockAchievement } from "@/lib/account";
 import { buildDeck, handValueBlackjack, isBlackjack } from "@/lib/cards";
 import { MAX_BET } from "@/lib/vip";
 import {
@@ -112,10 +112,10 @@ export async function POST(req: NextRequest) {
   if (action === "deal") {
     const bet = clampBet(body?.bet, money, MAX_BET);
     if (bet === null) return jsonError("Invalid bet amount");
+    if (!(await deductBet(user.id, bet, isDevAccount(user)))) return jsonError("Not enough balance");
     const deck: Card[] = buildDeck();
     const player = [deck.pop()!, deck.pop()!];
     const dealer = [deck.pop()!, deck.pop()!];
-    await addMoney(user.id, -bet);
     state = {
       deck,
       dealer,
@@ -147,8 +147,7 @@ export async function POST(req: NextRequest) {
     state.insuranceResolved = true;
     if (take) {
       const insBet = Math.floor(hand.bet / 2);
-      if (insBet > money) return jsonError("Not enough balance for insurance");
-      await addMoney(user.id, -insBet);
+      if (!(await deductBet(user.id, insBet, isDevAccount(user)))) return jsonError("Not enough balance for insurance");
       state.insuranceBet = insBet;
       if (isBlackjack(state.dealer)) {
         await addMoney(user.id, insBet * 3);
@@ -184,8 +183,7 @@ export async function POST(req: NextRequest) {
 
   if (action === "double") {
     if (hand.cards.length !== 2 || hand.doubled) return jsonError("Cannot double now");
-    if (hand.bet > money) return jsonError("Not enough balance to double");
-    await addMoney(user.id, -hand.bet);
+    if (!(await deductBet(user.id, hand.bet, isDevAccount(user)))) return jsonError("Not enough balance to double");
     hand.bet *= 2;
     hand.doubled = true;
     hand.cards.push(draw(state));
@@ -206,8 +204,7 @@ export async function POST(req: NextRequest) {
 
   if (action === "split") {
     if (!canSplit(hand) || state.hands.length >= 4) return jsonError("Cannot split now");
-    if (hand.bet > money) return jsonError("Not enough balance to split");
-    await addMoney(user.id, -hand.bet);
+    if (!(await deductBet(user.id, hand.bet, isDevAccount(user)))) return jsonError("Not enough balance to split");
     const [first, second] = hand.cards;
     const handOne = newHand([first, draw(state)], hand.bet);
     const handTwo = newHand([second, draw(state)], hand.bet);
