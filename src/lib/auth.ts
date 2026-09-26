@@ -1,7 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import db from "./db";
+import { get } from "./db";
 import type { UserRow } from "./types";
 
 const SECRET = process.env.AUTH_SECRET || "dev-insecure-secret-change-me-in-env";
@@ -55,18 +55,16 @@ export async function getSessionUserId(): Promise<number | null> {
   }
 }
 
-export function getUserById(id: number): UserRow | undefined {
-  return db.prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRow | undefined;
+export async function getUserById(id: number): Promise<UserRow | undefined> {
+  return get<UserRow>("SELECT * FROM users WHERE id = ?", [id]);
 }
 
-export function getUserByUsername(username: string): UserRow | undefined {
-  return db
-    .prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE")
-    .get(username) as UserRow | undefined;
+export async function getUserByUsername(username: string): Promise<UserRow | undefined> {
+  return get<UserRow>("SELECT * FROM users WHERE LOWER(username) = LOWER(?)", [username]);
 }
 
 export async function getCurrentUser(): Promise<UserRow | null> {
   const uid = await getSessionUserId();
   if (!uid) return null;
-  return getUserById(uid) ?? null;
+  return (await getUserById(uid)) ?? null;
 }

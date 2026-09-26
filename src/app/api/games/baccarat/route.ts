@@ -63,8 +63,8 @@ export async function POST(req: NextRequest) {
 
   const won = payout > bet;
   const push = payout === bet;
-  addMoney(user.id, payout - bet);
-  recordGame(user.id, "\u{1F0CF} Baccarat", won, bet, payout, push);
+  await addMoney(user.id, payout - bet);
+  await recordGame(user.id, "\u{1F0CF} Baccarat", won, bet, payout, push);
 
   return NextResponse.json({
     player,
@@ -73,6 +73,6 @@ export async function POST(req: NextRequest) {
     bankerTotal,
     winner,
     payout,
-    balance: addMoney(user.id, 0),
+    balance: await addMoney(user.id, 0),
   });
 }

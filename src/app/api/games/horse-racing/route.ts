@@ -55,8 +55,8 @@ export async function POST(req: NextRequest) {
   const won = winnerIdx === horseIdx;
   const payout = won ? Math.floor(bet * HORSES[horseIdx].odds) : 0;
 
-  addMoney(user.id, payout - bet);
-  recordGame(user.id, "\u{1F407} Horse Racing", won, bet, payout);
+  await addMoney(user.id, payout - bet);
+  await recordGame(user.id, "\u{1F407} Horse Racing", won, bet, payout);
 
   return NextResponse.json({
     steps: steps.filter((_, i) => i % 2 === 0),
@@ -64,6 +64,6 @@ export async function POST(req: NextRequest) {
     winnerIdx,
     won,
     payout,
-    balance: addMoney(user.id, 0),
+    balance: await addMoney(user.id, 0),
   });
 }

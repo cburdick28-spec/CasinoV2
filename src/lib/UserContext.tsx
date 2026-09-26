@@ -29,11 +29,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const toastId = useRef(0);
 
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/auth/me", { cache: "no-store" });
-    const data = await res.json();
-    setUser(data.user);
-    setJackpot(data.jackpot);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/auth/me", { cache: "no-store" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) throw new Error(data?.error || `Server error (${res.status})`);
+      setUser(data.user);
+      setJackpot(data.jackpot);
+    } catch (err) {
+      console.error("Failed to load account:", err);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {

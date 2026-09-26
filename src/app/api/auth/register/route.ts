@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/db";
+import { get } from "@/lib/db";
 import { createSession, getUserByUsername, hashPassword } from "@/lib/auth";
 import { jsonError } from "@/lib/api";
 import { STARTING_MONEY } from "@/lib/vip";
@@ -18,17 +18,13 @@ export async function POST(req: NextRequest) {
   if (!password || password.length < 4) {
     return jsonError("Password must be at least 4 characters");
   }
-  if (getUserByUsername(username)) {
+  if (await getUserByUsername(username)) {
     return jsonError("That username is already taken");
   }
 
   const { hash, salt } = hashPassword(password);
-  const info = db
-    .prepare(
-      "INSERT INTO users (username, password_hash, salt, money, created_at) VALUES (?, ?, ?, ?, ?)"
-    )
-    .run(username, hash, salt, STARTING_MONEY, Date.now());
+  const info = await get<{ id: number }>("INSERT INTO users (username, password_hash, salt, money, created_at) VALUES (?, ?, ?, ?, ?) RETURNING id", [username, hash, salt, STARTING_MONEY, Date.now()]);
 
-  await createSession(Number(info.lastInsertRowid));
+  await createSession(info!.id);
   return NextResponse.json({ ok: true });
 }

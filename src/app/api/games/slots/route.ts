@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   if (bet === null) return jsonError("Invalid bet amount");
 
   const reels = [weightedSymbol(), weightedSymbol(), weightedSymbol()];
-  const jackpotBefore = currentJackpot();
+  const jackpotBefore = await currentJackpot();
   let payout = 0;
   let won = false;
   let jackpotWon = 0;
@@ -52,26 +52,26 @@ export async function POST(req: NextRequest) {
     if (reels[0].isJackpot) {
       jackpotWon = jackpotBefore;
       payout += jackpotWon;
-      setJackpot(1000);
-      unlockAchievement(user.id, "jackpot");
+      await setJackpot(1000);
+      await unlockAchievement(user.id, "jackpot");
     }
   } else if (reels[0].id === reels[1].id || reels[1].id === reels[2].id) {
     const matched = reels[0].id === reels[1].id ? reels[0] : reels[1];
     payout = Math.max(1, Math.floor((bet * matched.triplePay) / 4));
     won = true;
   } else {
-    addToJackpot(Math.ceil(bet * 0.2));
+    await addToJackpot(Math.ceil(bet * 0.2));
   }
 
-  addMoney(user.id, won ? payout - bet : -bet);
-  recordGame(user.id, "\u{1F3B0} Slots", won, bet, payout);
+  await addMoney(user.id, won ? payout - bet : -bet);
+  await recordGame(user.id, "\u{1F3B0} Slots", won, bet, payout);
 
   return NextResponse.json({
     reels: reels.map((s) => s.id),
     won,
     payout,
     jackpotWon,
-    jackpot: currentJackpot(),
-    balance: addMoney(user.id, 0),
+    jackpot: await currentJackpot(),
+    balance: await addMoney(user.id, 0),
   });
 }

@@ -42,7 +42,7 @@ const NEXT: Record<Stage, Stage> = {
 export async function GET() {
   const result = await requireUser();
   if ("error" in result) return result.error;
-  const state = getGameState<PokerState>(result.user.id, GAME);
+  const state = await getGameState<PokerState>(result.user.id, GAME);
   if (!state) return NextResponse.json({ state: null });
   return NextResponse.json({ state: serialize(state, state.stage === "result") });
 }
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const action = body?.action;
 
-  let state = getGameState<PokerState>(user.id, GAME);
+  let state = await getGameState<PokerState>(user.id, GAME);
 
   if (action === "deal") {
     const bet = clampBet(body?.bet, money, MAX_BET);
@@ -62,25 +62,25 @@ export async function POST(req: NextRequest) {
     const deck = buildDeck();
     const player = [deck.pop()!, deck.pop()!];
     const dealer = [deck.pop()!, deck.pop()!];
-    addMoney(user.id, -bet);
+    await addMoney(user.id, -bet);
     state = { deck, player, dealer, community: [], bet, pot: bet * 2, stage: "preflop" };
-    setGameState(user.id, GAME, state);
-    return NextResponse.json({ state: serialize(state, false), balance: addMoney(user.id, 0) });
+    await setGameState(user.id, GAME, state);
+    return NextResponse.json({ state: serialize(state, false), balance: await addMoney(user.id, 0) });
   }
 
   if (!state) return jsonError("No active hand — deal first.");
 
   if (action === "fold") {
     const netLoss = state.bet;
-    recordGame(user.id, "♠️ Poker", false, netLoss, 0);
-    clearGameState(user.id, GAME);
-    return NextResponse.json({ folded: true, net: netLoss, balance: addMoney(user.id, 0) });
+    await recordGame(user.id, "♠️ Poker", false, netLoss, 0);
+    await clearGameState(user.id, GAME);
+    return NextResponse.json({ folded: true, net: netLoss, balance: await addMoney(user.id, 0) });
   }
 
   if (action === "raise") {
     const raise = clampBet(body?.amount, money, MAX_BET);
     if (raise === null) return jsonError("Invalid raise amount");
-    addMoney(user.id, -raise);
+    await addMoney(user.id, -raise);
     state.pot += raise;
     state.bet += raise;
   } else if (action !== "check") {
@@ -107,32 +107,32 @@ export async function POST(req: NextRequest) {
 
     const cmp = playerScore.length && dealerScore.length ? compare(playerScore, dealerScore) : 0;
     if (cmp > 0) {
-      addMoney(user.id, state.pot);
+      await addMoney(user.id, state.pot);
       net = state.pot - state.bet;
       outcome = "win";
-      recordGame(user.id, "♠️ Poker", true, state.bet, state.pot);
-      if (pName === "Royal Flush") unlockAchievement(user.id, "royal_flush");
+      await recordGame(user.id, "♠️ Poker", true, state.bet, state.pot);
+      if (pName === "Royal Flush") await unlockAchievement(user.id, "royal_flush");
     } else if (cmp < 0) {
       outcome = "lose";
       net = state.bet;
-      recordGame(user.id, "♠️ Poker", false, state.bet, 0);
+      await recordGame(user.id, "♠️ Poker", false, state.bet, 0);
     } else {
-      addMoney(user.id, state.bet);
+      await addMoney(user.id, state.bet);
       outcome = "chop";
       net = 0;
     }
 
     const finalState = { ...state };
-    clearGameState(user.id, GAME);
+    await clearGameState(user.id, GAME);
     return NextResponse.json({
       state: serialize(finalState, true),
       result: { outcome, net, playerHand: pName, dealerHand: dName },
-      balance: addMoney(user.id, 0),
+      balance: await addMoney(user.id, 0),
     });
   }
 
-  setGameState(user.id, GAME, state);
-  return NextResponse.json({ state: serialize(state, false), balance: addMoney(user.id, 0) });
+  await setGameState(user.id, GAME, state);
+  return NextResponse.json({ state: serialize(state, false), balance: await addMoney(user.id, 0) });
 }
 
 function compare(a: number[], b: number[]): number {
@@ -147,6 +147,6 @@ function compare(a: number[], b: number[]): number {
 export async function DELETE() {
   const result = await requireUser();
   if ("error" in result) return result.error;
-  clearGameState(result.user.id, GAME);
+  await clearGameState(result.user.id, GAME);
   return NextResponse.json({ ok: true });
 }

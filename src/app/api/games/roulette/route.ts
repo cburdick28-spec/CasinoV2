@@ -116,8 +116,8 @@ export async function POST(req: NextRequest) {
   });
 
   const won = totalPayout > 0;
-  addMoney(user.id, totalPayout - totalBet);
-  recordGame(user.id, "\u{1F3A1} Roulette", won, totalBet, totalPayout);
+  await addMoney(user.id, totalPayout - totalBet);
+  await recordGame(user.id, "\u{1F3A1} Roulette", won, totalBet, totalPayout);
 
   return NextResponse.json({
     spin,
@@ -126,6 +126,6 @@ export async function POST(req: NextRequest) {
     totalBet,
     totalPayout,
     net: totalPayout - totalBet,
-    balance: addMoney(user.id, 0),
+    balance: await addMoney(user.id, 0),
   });
 }

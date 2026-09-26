@@ -34,9 +34,9 @@ export async function POST(req: NextRequest) {
   const payout = Math.floor(bet * multiplier);
   const won = payout > bet;
 
-  addMoney(user.id, payout - bet);
-  recordGame(user.id, "\u{1F3B3} Plinko", won, bet, payout);
-  if (multiplier === Math.max(...table)) unlockAchievement(user.id, "plinko_max");
+  await addMoney(user.id, payout - bet);
+  await recordGame(user.id, "\u{1F3B3} Plinko", won, bet, payout);
+  if (multiplier === Math.max(...table)) await unlockAchievement(user.id, "plinko_max");
 
   return NextResponse.json({
     path,
@@ -44,6 +44,6 @@ export async function POST(req: NextRequest) {
     multiplier,
     payout,
     risk,
-    balance: addMoney(user.id, 0),
+    balance: await addMoney(user.id, 0),
   });
 }
