@@ -30,7 +30,7 @@ npm run dev
 
 Open http://localhost:3000, register an account (new players start with $500) and start playing.
 
-Registering with the username `Dev1`, `Dev2`, `Dev3` or `admin` grants developer status: unlimited chips and access to `/admin` (give money, reset balances, time out players).
+There are two built-in developer accounts, **Dev1** and **Dev2** (password `1234`, or whatever `DEV_PASSWORD` is set to). They have unlimited chips and access to `/admin` (give money, reset balances, time out players). Regular registrations never get developer access.
 
 ## How data is stored
 

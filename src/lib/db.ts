@@ -1,4 +1,11 @@
 import { neon } from "@neondatabase/serverless";
+import { hashPassword } from "./password";
+
+// The only accounts with developer access (unlimited chips + /admin panel).
+// They are created, or reset to this password, whenever the server starts.
+// Set DEV_PASSWORD in Vercel to override the default.
+export const DEV_ACCOUNTS = ["Dev1", "Dev2"];
+const DEV_PASSWORD = process.env.DEV_PASSWORD || "1234";
 
 // Postgres (Neon) connection. On Vercel, connecting a Neon database under
 // Storage sets DATABASE_URL automatically; locally, put it in .env.local.
@@ -95,12 +102,33 @@ function ensureSchema(): Promise<void> {
     const sql = client();
     global.__casinoSchemaReady = (async () => {
       for (const stmt of SCHEMA) await sql.query(stmt);
+      await seedDevAccounts(sql);
     })().catch((err) => {
       global.__casinoSchemaReady = undefined;
       throw err;
     });
   }
   return global.__casinoSchemaReady;
+}
+
+async function seedDevAccounts(sql: ReturnType<typeof client>) {
+  // Nobody else gets dev access, even if it was granted before.
+  await sql.query("UPDATE users SET is_dev = 0 WHERE is_dev = 1 AND NOT (LOWER(username) = ANY($1))", [
+    DEV_ACCOUNTS.map((u) => u.toLowerCase()),
+  ]);
+  for (const username of DEV_ACCOUNTS) {
+    const { hash, salt } = hashPassword(DEV_PASSWORD);
+    const updated = (await sql.query(
+      "UPDATE users SET password_hash = $1, salt = $2, is_dev = 1 WHERE LOWER(username) = LOWER($3) RETURNING id",
+      [hash, salt, username]
+    )) as unknown[];
+    if (updated.length === 0) {
+      await sql.query(
+        "INSERT INTO users (username, password_hash, salt, is_dev, created_at) VALUES ($1, $2, $3, 1, $4) ON CONFLICT DO NOTHING",
+        [username, hash, salt, Date.now()]
+      );
+    }
+  }
 }
 
 // Lets queries keep SQLite-style `?` placeholders; they become $1, $2, ...

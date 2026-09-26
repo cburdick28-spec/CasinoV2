@@ -1,4 +1,3 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { get } from "./db";
@@ -9,18 +8,7 @@ const key = new TextEncoder().encode(SECRET);
 const COOKIE_NAME = "casino_session";
 const SESSION_DAYS = 30;
 
-export function hashPassword(password: string, salt?: string) {
-  const useSalt = salt || randomBytes(16).toString("hex");
-  const hash = scryptSync(password, useSalt, 64).toString("hex");
-  return { hash, salt: useSalt };
-}
-
-export function verifyPassword(password: string, salt: string, hash: string) {
-  const attempt = scryptSync(password, salt, 64);
-  const expected = Buffer.from(hash, "hex");
-  if (attempt.length !== expected.length) return false;
-  return timingSafeEqual(attempt, expected);
-}
+export { hashPassword, verifyPassword } from "./password";
 
 export async function createSession(userId: number) {
   const token = await new SignJWT({ uid: userId })

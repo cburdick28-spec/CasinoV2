@@ -1,11 +1,11 @@
 import { all, get, getJackpot, run } from "./db";
-import { ACHIEVEMENTS, DEV_USERNAMES, getNextVipTier, getVipTier } from "./vip";
+import { ACHIEVEMENTS, getNextVipTier, getVipTier } from "./vip";
 import type { PublicUser, UserRow } from "./types";
 
 export const DEV_MONEY = 999_999_999;
 
 export function isDevAccount(user: UserRow): boolean {
-  return user.is_dev === 1 || DEV_USERNAMES.includes(user.username);
+  return user.is_dev === 1;
 }
 
 export function effectiveMoney(user: UserRow): number {
