@@ -24,19 +24,21 @@ Slots · Blackjack · Roulette · Texas Hold'em (vs. dealer) · Baccarat · Cras
 
 ```bash
 npm install
-cp .env.example .env.local   # then edit AUTH_SECRET
+cp .env.example .env.local   # then set AUTH_SECRET and DATABASE_URL
 npm run dev
 ```
 
 Open http://localhost:3000, register an account (new players start with $500) and start playing.
 
-Registering with the username `Dev1`, `Dev2`, `Dev3` or `admin` grants developer status: unlimited chips and access to `/admin` (give money, reset balances, time out players).
+There are two built-in developer accounts, **Dev1** and **Dev2** (password `1234`, or whatever `DEV_PASSWORD` is set to). They have unlimited chips and access to `/admin` (give money, reset balances, time out players). Regular registrations never get developer access.
 
 ## How data is stored
 
-Game/account state lives in a local **SQLite** database (`better-sqlite3`) at `data/casino.db`, created automatically on first run. This keeps the app dependency-free for local development and most traditional Node hosts (Railway, Render, Fly.io, a VPS, etc.) — just make sure `data/` is on a persistent volume.
+Account and game state lives in a **Postgres** database hosted on [Neon](https://neon.tech), accessed through `@neondatabase/serverless`. Tables are created automatically the first time the app talks to the database.
 
-**Note for Vercel:** Vercel's serverless functions have an ephemeral, read-only filesystem outside of `/tmp`, so a SQLite file will *not* persist across requests/deploys there. If you deploy to Vercel, swap `src/lib/db.ts` for a hosted database — Vercel Postgres, Neon, or Turso (libSQL, which is API-compatible with better-sqlite3's `db.prepare(...).run/get/all` style) are the least invasive options. Everything else in the app (auth, game logic, routes) is unaffected by that swap since all persistence goes through `src/lib/db.ts` and `src/lib/account.ts`.
+To set it up on Vercel: open the project, go to **Storage → Create Database → Neon**, and connect it to the project. That sets `DATABASE_URL` for you; redeploy afterwards. For local development, put the same `DATABASE_URL` in `.env.local`.
+
+All database access goes through `src/lib/db.ts` (`all`, `get`, `run`) and the helpers in `src/lib/account.ts`.
 
 ## Project structure
 
@@ -48,7 +50,7 @@ src/
     (profile, stats, history, leaderboard, chat, admin pages)
   components/       # shared UI (Navbar, PlayingCard, BetInput, GameShell...)
   lib/
-    db.ts           # SQLite connection + schema
+    db.ts           # Postgres (Neon) connection + schema
     auth.ts         # password hashing + session cookies
     account.ts      # balance/achievements/stats helpers
     games/          # game-specific server logic (blackjack, crash)

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api";
-import db from "@/lib/db";
+import { get, run } from "@/lib/db";
 import { addMoney, toPublicUser, unlockAchievement } from "@/lib/account";
 
 function todayStr() {
@@ -21,14 +21,12 @@ export async function POST() {
   const streak = user.last_daily === yesterday ? user.daily_streak + 1 : 1;
   const bonus = 100 + Math.min(streak - 1, 10) * 25;
 
-  db.prepare("UPDATE users SET last_daily = ?, daily_streak = ? WHERE id = ?").run(
-    today,
+  await run("UPDATE users SET last_daily = ?, daily_streak = ? WHERE id = ?", [today,
     streak,
-    user.id
-  );
-  addMoney(user.id, bonus);
-  if (streak >= 7) unlockAchievement(user.id, "daily_7");
+    user.id]);
+  await addMoney(user.id, bonus);
+  if (streak >= 7) await unlockAchievement(user.id, "daily_7");
 
-  const fresh = db.prepare("SELECT * FROM users WHERE id = ?").get(user.id) as typeof user;
-  return NextResponse.json({ ok: true, bonus, streak, user: toPublicUser(fresh) });
+  const fresh = await get<typeof user>("SELECT * FROM users WHERE id = ?", [user.id]);
+  return NextResponse.json({ ok: true, bonus, streak, user: await toPublicUser(fresh ?? user) });
 }

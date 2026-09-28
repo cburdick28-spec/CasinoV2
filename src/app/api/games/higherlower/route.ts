@@ -23,7 +23,7 @@ function fairMultiplier(card: number, guess: "higher" | "lower"): number {
 export async function GET() {
   const result = await requireUser();
   if ("error" in result) return result.error;
-  const state = getGameState<HLState>(result.user.id, GAME);
+  const state = await getGameState<HLState>(result.user.id, GAME);
   return NextResponse.json({ state });
 }
 
@@ -34,15 +34,15 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const action = body?.action;
 
-  let state = getGameState<HLState>(user.id, GAME);
+  let state = await getGameState<HLState>(user.id, GAME);
 
   if (action === "cashout") {
     if (!state) return jsonError("No active round");
     const payout = Math.floor(state.pot);
-    addMoney(user.id, payout);
-    recordGame(user.id, "\u{1F53C} Higher Lower", true, state.bet, payout);
-    clearGameState(user.id, GAME);
-    return NextResponse.json({ cashedOut: true, payout, balance: addMoney(user.id, 0) });
+    await addMoney(user.id, payout);
+    await recordGame(user.id, "\u{1F53C} Higher Lower", true, state.bet, payout);
+    await clearGameState(user.id, GAME);
+    return NextResponse.json({ cashedOut: true, payout, balance: await addMoney(user.id, 0) });
   }
 
   if (action !== "guess") return jsonError("Unknown action");
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   if (!state) {
     const bet = clampBet(body?.bet, money, MAX_BET);
     if (bet === null) return jsonError("Invalid bet amount");
-    addMoney(user.id, -bet);
+    await addMoney(user.id, -bet);
     state = { bet, pot: bet, card: randInt(1, 13), streak: 0 };
   }
 
@@ -60,30 +60,30 @@ export async function POST(req: NextRequest) {
 
   if (nextCard === currentCard) {
     state.card = nextCard;
-    setGameState(user.id, GAME, state);
-    return NextResponse.json({ nextCard, push: true, state, balance: addMoney(user.id, 0) });
+    await setGameState(user.id, GAME, state);
+    return NextResponse.json({ nextCard, push: true, state, balance: await addMoney(user.id, 0) });
   }
 
   const win =
     (guess === "higher" && nextCard > currentCard) || (guess === "lower" && nextCard < currentCard);
 
   if (!win) {
-    recordGame(user.id, "\u{1F53C} Higher Lower", false, state.bet, 0);
-    clearGameState(user.id, GAME);
-    return NextResponse.json({ nextCard, win: false, state: null, balance: addMoney(user.id, 0) });
+    await recordGame(user.id, "\u{1F53C} Higher Lower", false, state.bet, 0);
+    await clearGameState(user.id, GAME);
+    return NextResponse.json({ nextCard, win: false, state: null, balance: await addMoney(user.id, 0) });
   }
 
   const mult = fairMultiplier(currentCard, guess);
   state.pot = Math.floor(state.pot * mult);
   state.card = nextCard;
   state.streak += 1;
-  setGameState(user.id, GAME, state);
-  return NextResponse.json({ nextCard, win: true, state, balance: addMoney(user.id, 0) });
+  await setGameState(user.id, GAME, state);
+  return NextResponse.json({ nextCard, win: true, state, balance: await addMoney(user.id, 0) });
 }
 
 export async function DELETE() {
   const result = await requireUser();
   if ("error" in result) return result.error;
-  clearGameState(result.user.id, GAME);
+  await clearGameState(result.user.id, GAME);
   return NextResponse.json({ ok: true });
 }

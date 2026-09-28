@@ -1,7 +1,6 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import db from "./db";
+import { get } from "./db";
 import type { UserRow } from "./types";
 
 const SECRET = process.env.AUTH_SECRET || "dev-insecure-secret-change-me-in-env";
@@ -9,18 +8,7 @@ const key = new TextEncoder().encode(SECRET);
 const COOKIE_NAME = "casino_session";
 const SESSION_DAYS = 30;
 
-export function hashPassword(password: string, salt?: string) {
-  const useSalt = salt || randomBytes(16).toString("hex");
-  const hash = scryptSync(password, useSalt, 64).toString("hex");
-  return { hash, salt: useSalt };
-}
-
-export function verifyPassword(password: string, salt: string, hash: string) {
-  const attempt = scryptSync(password, salt, 64);
-  const expected = Buffer.from(hash, "hex");
-  if (attempt.length !== expected.length) return false;
-  return timingSafeEqual(attempt, expected);
-}
+export { hashPassword, verifyPassword } from "./password";
 
 export async function createSession(userId: number) {
   const token = await new SignJWT({ uid: userId })
@@ -55,18 +43,16 @@ export async function getSessionUserId(): Promise<number | null> {
   }
 }
 
-export function getUserById(id: number): UserRow | undefined {
-  return db.prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRow | undefined;
+export async function getUserById(id: number): Promise<UserRow | undefined> {
+  return get<UserRow>("SELECT * FROM users WHERE id = ?", [id]);
 }
 
-export function getUserByUsername(username: string): UserRow | undefined {
-  return db
-    .prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE")
-    .get(username) as UserRow | undefined;
+export async function getUserByUsername(username: string): Promise<UserRow | undefined> {
+  return get<UserRow>("SELECT * FROM users WHERE LOWER(username) = LOWER(?)", [username]);
 }
 
 export async function getCurrentUser(): Promise<UserRow | null> {
   const uid = await getSessionUserId();
   if (!uid) return null;
-  return getUserById(uid) ?? null;
+  return (await getUserById(uid)) ?? null;
 }

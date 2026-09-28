@@ -55,6 +55,5 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "seven_streak", name: "On a Roll", emoji: "\u{1F525}", desc: "Win 7 games in a row" },
 ];
 
-export const DEV_USERNAMES = ["Dev1", "Dev2", "Dev3", "admin"];
 export const MAX_BET = 1_000_000_000_000_000;
 export const STARTING_MONEY = 500;

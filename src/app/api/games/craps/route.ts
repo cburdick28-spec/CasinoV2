@@ -25,7 +25,7 @@ interface CrapsState {
 export async function GET() {
   const result = await requireUser();
   if ("error" in result) return result.error;
-  const state = getGameState<CrapsState>(result.user.id, GAME);
+  const state = await getGameState<CrapsState>(result.user.id, GAME);
   return NextResponse.json({ state });
 }
 
@@ -36,16 +36,16 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const action = body?.action;
 
-  let state = getGameState<CrapsState>(user.id, GAME);
+  let state = await getGameState<CrapsState>(user.id, GAME);
 
   if (action === "add_odds") {
     if (!state || state.phase !== "point" || !state.point) return jsonError("No point established");
     const odds = clampBet(body?.amount, money, MAX_BET);
     if (odds === null) return jsonError("Invalid odds amount");
-    addMoney(user.id, -odds);
+    await addMoney(user.id, -odds);
     state.oddsBet += odds;
-    setGameState(user.id, GAME, state);
-    return NextResponse.json({ state, balance: addMoney(user.id, 0) });
+    await setGameState(user.id, GAME, state);
+    return NextResponse.json({ state, balance: await addMoney(user.id, 0) });
   }
 
   if (action !== "roll") return jsonError("Unknown action");
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   if (!state) {
     const bet = clampBet(body?.bet, money, MAX_BET);
     if (bet === null) return jsonError("Invalid bet amount");
-    addMoney(user.id, -bet);
+    await addMoney(user.id, -bet);
     state = { phase: "come_out", point: null, bet, oddsBet: 0 };
   }
 
@@ -94,13 +94,13 @@ export async function POST(req: NextRequest) {
   let balance = money;
   if (outcome !== "continue") {
     const totalWagered = state.bet + state.oddsBet;
-    balance = addMoney(user.id, payout);
-    recordGame(user.id, "\u{1F3B2} Craps", outcome === "win", totalWagered, payout);
-    clearGameState(user.id, GAME);
+    balance = await addMoney(user.id, payout);
+    await recordGame(user.id, "\u{1F3B2} Craps", outcome === "win", totalWagered, payout);
+    await clearGameState(user.id, GAME);
     state = null;
   } else {
-    setGameState(user.id, GAME, state);
-    balance = addMoney(user.id, 0);
+    await setGameState(user.id, GAME, state);
+    balance = await addMoney(user.id, 0);
   }
 
   return NextResponse.json({
@@ -117,6 +117,6 @@ export async function POST(req: NextRequest) {
 export async function DELETE() {
   const result = await requireUser();
   if ("error" in result) return result.error;
-  clearGameState(result.user.id, GAME);
+  await clearGameState(result.user.id, GAME);
   return NextResponse.json({ ok: true });
 }
