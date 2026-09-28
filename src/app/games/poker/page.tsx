@@ -32,12 +32,13 @@ const STAGE_LABEL: Record<string, string> = {
 };
 
 export default function PokerPage() {
-  const { user, refresh, pushToast } = useUser();
+  const { user, refresh, pushToast, celebrate } = useUser();
   const [ante, setAnte] = useState(10);
   const [raiseAmt, setRaiseAmt] = useState(5);
   const [state, setState] = useState<StateView | null>(null);
   const [result, setResult] = useState<ResultView | null>(null);
   const [busy, setBusy] = useState(false);
+  const [dealSeq, setDealSeq] = useState(0);
 
   if (!user) return null;
 
@@ -65,6 +66,7 @@ export default function PokerPage() {
     if (data.result) {
       setResult(data.result);
       pushToast(data.result.outcome === "win" ? "win" : data.result.outcome === "lose" ? "lose" : "info", `${data.result.outcome.toUpperCase()} ${data.result.net ? `$${Math.abs(data.result.net).toLocaleString()}` : ""}`);
+      if (data.result.outcome === "win" && data.result.playerHand === "Royal Flush") celebrate();
     } else {
       setResult(null);
     }
@@ -73,6 +75,7 @@ export default function PokerPage() {
 
   function deal() {
     setResult(null);
+    setDealSeq((n) => n + 1);
     act({ action: "deal", bet: ante });
   }
 
@@ -93,7 +96,7 @@ export default function PokerPage() {
             <div className="text-sm text-muted">{STAGE_LABEL[state.stage]} &middot; Pot ${state.pot.toLocaleString()}</div>
             <div>
               <h3 className="text-sm text-muted mb-2">Your Hand</h3>
-              <CardRow cards={state.player} />
+              <CardRow cards={state.player} dealKey={`player-${dealSeq}`} />
             </div>
             {state.community.length > 0 && (
               <div>
@@ -103,7 +106,7 @@ export default function PokerPage() {
             )}
             <div>
               <h3 className="text-sm text-muted mb-2">Dealer</h3>
-              <CardRow cards={state.dealer} />
+              <CardRow cards={state.dealer} dealKey={`dealer-${dealSeq}`} />
             </div>
 
             {result && (

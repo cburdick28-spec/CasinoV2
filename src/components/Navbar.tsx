@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/lib/UserContext";
 import { useState } from "react";
+import Money from "@/components/Money";
 
 const NAV_LINKS = [
   { href: "/", label: "Lobby" },
@@ -77,7 +78,7 @@ export default function Navbar() {
         <div className="ml-auto flex items-center gap-3">
           <div className="hidden sm:block text-xs text-muted text-right">
             <div>💰 Jackpot</div>
-            <div className="font-bold text-[var(--gold)]">${jackpot.toLocaleString()}</div>
+            <Money value={jackpot} className="font-bold text-[var(--gold)]" />
           </div>
 
           {canClaim && (
@@ -88,7 +89,7 @@ export default function Navbar() {
 
           <div className="panel px-3 py-1.5 flex items-center gap-2">
             <span style={{ color: user.vip.color }}>{user.vip.emoji}</span>
-            <span className="font-bold">${user.money.toLocaleString()}</span>
+            <Money value={user.money} className="font-bold" />
           </div>
 
           <button className="md:hidden btn btn-ghost !p-2" onClick={() => setOpen((o) => !o)}>

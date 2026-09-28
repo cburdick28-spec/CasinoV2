@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useUser } from "@/lib/UserContext";
 import AuthForm from "@/components/AuthForm";
 import { GAMES } from "@/lib/gameList";
+import Money from "@/components/Money";
 
 export default function Home() {
   const { user, jackpot, loading } = useUser();
@@ -33,13 +34,11 @@ export default function Home() {
         <div className="md:ml-auto flex gap-6">
           <div>
             <div className="text-xs text-muted">Balance</div>
-            <div className="text-2xl font-extrabold text-[var(--gold)]">${user.money.toLocaleString()}</div>
+            <Money value={user.money} className="text-2xl font-extrabold text-[var(--gold)]" />
           </div>
           <div>
             <div className="text-xs text-muted">Progressive Jackpot</div>
-            <div className="text-2xl font-extrabold text-[var(--gold)] glow inline-block px-2 rounded">
-              ${jackpot.toLocaleString()}
-            </div>
+            <Money value={jackpot} className="text-2xl font-extrabold text-[var(--gold)] glow inline-block px-2 rounded" />
           </div>
         </div>
       </div>

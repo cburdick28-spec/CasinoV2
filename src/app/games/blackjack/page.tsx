@@ -28,11 +28,12 @@ interface StateView {
 }
 
 export default function BlackjackPage() {
-  const { user, refresh, pushToast } = useUser();
+  const { user, refresh, pushToast, celebrate } = useUser();
   const [bet, setBet] = useState(10);
   const [state, setState] = useState<StateView | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [dealSeq, setDealSeq] = useState(0);
 
   useEffect(() => {
     fetch("/api/games/blackjack")
@@ -53,11 +54,13 @@ export default function BlackjackPage() {
       pushToast("lose", data.error);
       return;
     }
+    if (body.action === "deal") setDealSeq((n) => n + 1);
     setState(data.state);
     if (data.messages?.length) {
       setMessages(data.messages);
       const anyWin = data.messages.some((m: string) => m.includes("+$"));
       pushToast(anyWin ? "win" : "lose", data.messages.join(" "));
+      if (data.messages.some((m: string) => m.includes("Blackjack!"))) celebrate();
     } else {
       setMessages([]);
     }
@@ -105,7 +108,7 @@ export default function BlackjackPage() {
               <h3 className="text-sm text-muted mb-2">
                 Dealer {state.dealerValue !== null ? `(${state.dealerValue})` : ""}
               </h3>
-              <CardRow cards={state.dealer.length ? state.dealer : [null]} />
+              <CardRow cards={state.dealer.length ? state.dealer : [null]} dealKey={`dealer-${dealSeq}`} />
             </div>
 
             <div className="flex flex-col gap-4">
@@ -119,7 +122,7 @@ export default function BlackjackPage() {
                     {h.natural && " • Blackjack!"}
                     {h.surrendered && " • Surrendered"}
                   </h3>
-                  <CardRow cards={h.cards} />
+                  <CardRow cards={h.cards} dealKey={`hand-${idx}-${dealSeq}`} />
                 </div>
               ))}
             </div>

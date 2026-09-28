@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/lib/UserContext";
+import Money from "@/components/Money";
 
 export default function GameShell({
   title,
@@ -34,7 +35,7 @@ export default function GameShell({
           {subtitle && <p className="text-muted text-sm">{subtitle}</p>}
         </div>
         <div className="panel px-4 py-2 text-sm">
-          Balance: <span className="font-bold text-[var(--gold)]">${user.money.toLocaleString()}</span>
+          Balance: <Money value={user.money} className="font-bold text-[var(--gold)]" />
         </div>
       </div>
       {children}

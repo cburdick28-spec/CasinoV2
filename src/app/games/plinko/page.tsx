@@ -15,7 +15,7 @@ const MULTIPLIERS: Record<Risk, number[]> = {
 };
 
 export default function PlinkoPage() {
-  const { user, refresh, pushToast } = useUser();
+  const { user, refresh, pushToast, celebrate } = useUser();
   const [bet, setBet] = useState(10);
   const [risk, setRisk] = useState<Risk>("medium");
   const [dropping, setDropping] = useState(false);
@@ -48,6 +48,7 @@ export default function PlinkoPage() {
         setDropping(false);
         setLanded({ bucket: data.bucket, multiplier: data.multiplier, payout: data.payout });
         pushToast(data.payout > bet ? "win" : "lose", `${data.multiplier}x — ${data.payout > bet ? "+" : ""}$${(data.payout - bet).toLocaleString()}`);
+        if (data.multiplier >= 15) celebrate();
         refresh();
         return;
       }
@@ -70,14 +71,24 @@ export default function PlinkoPage() {
           {Array.from({ length: ROWS }).map((_, r) => (
             <div key={r} className="absolute left-0 right-0 flex justify-center gap-6" style={{ top: `${(r / ROWS) * 85}%` }}>
               {Array.from({ length: r + 2 }).map((_, c) => (
-                <span key={c} className="w-1.5 h-1.5 rounded-full bg-white/30" />
+                <span
+                  key={c}
+                  className={`w-1.5 h-1.5 rounded-full transition-all duration-150 ${
+                    ballRow === r ? "bg-[var(--gold)] scale-150" : "bg-white/30"
+                  }`}
+                />
               ))}
             </div>
           ))}
           {dropping || landed ? (
             <div
-              className="absolute w-4 h-4 rounded-full bg-[var(--gold)] shadow-lg transition-all duration-150"
-              style={{ left: `calc(${ballX}% - 8px)`, top: `${((ballRow + 1) / (ROWS + 1)) * 85}%` }}
+              className="absolute w-4 h-4 rounded-full bg-[var(--gold)] shadow-lg"
+              style={{
+                left: `calc(${ballX}% - 8px)`,
+                top: `${((ballRow + 1) / (ROWS + 1)) * 85}%`,
+                transition: "left 170ms cubic-bezier(0.5, 0, 0.5, 1.6), top 170ms cubic-bezier(0.3, 0.6, 0.4, 1)",
+                boxShadow: "0 0 10px rgba(255, 213, 74, 0.8)",
+              }}
             />
           ) : null}
         </div>
@@ -94,7 +105,7 @@ export default function PlinkoPage() {
         </div>
 
         {landed && (
-          <div className={`font-bold animate-in ${landed.payout > bet ? "text-success" : "text-danger"}`}>
+          <div className={`font-bold value-pop ${landed.payout > bet ? "text-success" : "text-danger"}`}>
             Landed on {landed.multiplier}x &mdash; {landed.payout > bet ? "+" : ""}${(landed.payout - bet).toLocaleString()}
           </div>
         )}

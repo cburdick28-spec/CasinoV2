@@ -22,12 +22,14 @@ export default function CrapsPage() {
   const [dice, setDice] = useState<[number, number] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [rolling, setRolling] = useState(false);
+  const [outcome, setOutcome] = useState<"win" | "lose" | "continue" | null>(null);
 
   if (!user) return null;
 
   async function roll(initialBet?: number) {
     setRolling(true);
     setMessage(null);
+    setOutcome(null);
     const res = await fetch("/api/games/craps", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -43,6 +45,7 @@ export default function CrapsPage() {
       setDice(data.dice);
       setState(data.state);
       setMessage(data.message);
+      setOutcome(data.outcome);
       if (data.outcome !== "continue") {
         pushToast(data.outcome === "win" ? "win" : "lose", data.message);
       }
@@ -65,11 +68,15 @@ export default function CrapsPage() {
   return (
     <GameShell title="Craps" emoji={"\u{1F3B2}"} subtitle="Classic pass-line craps. Back your point with an odds bet for a house-edge-free boost.">
       <div className="panel p-6 flex flex-col items-center gap-5">
-        <div className="flex gap-4 text-7xl h-24 items-center">
+        <div className={`flex gap-4 text-7xl h-24 items-center ${outcome === "lose" ? "shake" : ""}`}>
           {dice ? (
             <>
-              <span className={rolling ? "animate-spin" : ""}>{DICE_FACES[dice[0]]}</span>
-              <span className={rolling ? "animate-spin" : ""}>{DICE_FACES[dice[1]]}</span>
+              <span className={rolling ? "dice-tumble" : "value-pop"} style={{ animationDelay: "0ms" }}>
+                {DICE_FACES[dice[0]]}
+              </span>
+              <span className={rolling ? "dice-tumble" : "value-pop"} style={{ animationDelay: "80ms" }}>
+                {DICE_FACES[dice[1]]}
+              </span>
             </>
           ) : (
             <span className="text-muted text-2xl">Roll to begin</span>

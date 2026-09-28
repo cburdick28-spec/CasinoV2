@@ -1,8 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import GameShell from "@/components/GameShell";
 import { useUser } from "@/lib/UserContext";
+
+// Real European wheel pocket order, used to compute the wheel's resting rotation.
+const WHEEL_ORDER = [
+  0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29,
+  7, 28, 12, 35, 3, 26,
+];
+const POCKET_ANGLE = 360 / WHEEL_ORDER.length;
 
 type BetType =
   | "straight"
@@ -60,6 +67,8 @@ export default function RoulettePage() {
   const [spinning, setSpinning] = useState(false);
   const [spinResult, setSpinResult] = useState<number | null>(null);
   const [results, setResults] = useState<BetResult[] | null>(null);
+  const [wheelAngle, setWheelAngle] = useState(0);
+  const spinCountRef = useRef(0);
 
   if (!user) return null;
 
@@ -79,12 +88,24 @@ export default function RoulettePage() {
     if (slip.length === 0) return;
     setSpinning(true);
     setResults(null);
+    setSpinResult(null);
     const res = await fetch("/api/games/roulette", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ bets: slip }),
     });
     const data = await res.json();
+
+    if (res.ok) {
+      // Rotate so the winning pocket lands under the top pointer, plus several
+      // full turns for a satisfying decelerating spin.
+      const pocketIndex = WHEEL_ORDER.indexOf(data.spin);
+      const targetPocketAngle = 360 - pocketIndex * POCKET_ANGLE;
+      spinCountRef.current += 1;
+      const fullTurns = 5 * 360 * spinCountRef.current;
+      setWheelAngle(fullTurns + targetPocketAngle);
+    }
+
     setTimeout(() => {
       setSpinning(false);
       if (!res.ok) {
@@ -96,24 +117,67 @@ export default function RoulettePage() {
       pushToast(data.net >= 0 ? "win" : "lose", `${data.net >= 0 ? "+" : ""}$${data.net.toLocaleString()}`);
       setSlip([]);
       refresh();
-    }, 1200);
+    }, 2600);
   }
 
   return (
     <GameShell title="Roulette" emoji={"\u{1F3A1}"} subtitle="Build a bet slip across the board, then spin once.">
       <div className="panel p-6 flex flex-col items-center gap-4">
-        <div
-          className={`w-32 h-32 rounded-full border-8 flex items-center justify-center text-3xl font-extrabold transition-transform ${spinning ? "animate-spin" : ""}`}
-          style={{
-            borderColor: "var(--gold)",
-            color: spinResult === null ? "var(--muted)" : numColor(spinResult) === "red" ? "#ff5470" : numColor(spinResult) === "green" ? "#34d399" : "white",
-            background: "#0d0d1a",
-          }}
-        >
-          {spinning ? "\u{1F3A1}" : spinResult ?? "?"}
+        <div className="relative w-56 h-56">
+          {/* Pointer */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2 -top-1 z-10"
+            style={{
+              width: 0,
+              height: 0,
+              borderLeft: "8px solid transparent",
+              borderRight: "8px solid transparent",
+              borderTop: "14px solid var(--gold)",
+            }}
+          />
+          <div
+            className="w-56 h-56 rounded-full border-4 relative overflow-hidden"
+            style={{
+              borderColor: "var(--gold)",
+              transform: `rotate(${wheelAngle}deg)`,
+              transition: spinning ? "transform 2.5s cubic-bezier(0.12, 0.7, 0.15, 1)" : "none",
+              background: `conic-gradient(${WHEEL_ORDER.map((n, i) => {
+                const color = numColor(n) === "red" ? "#c1273a" : numColor(n) === "green" ? "#1f8f5f" : "#141420";
+                const from = (i / WHEEL_ORDER.length) * 360;
+                const to = ((i + 1) / WHEEL_ORDER.length) * 360;
+                return `${color} ${from}deg ${to}deg`;
+              }).join(", ")})`,
+            }}
+          >
+            {WHEEL_ORDER.map((n, i) => {
+              const angle = (i / WHEEL_ORDER.length) * 360 + POCKET_ANGLE / 2;
+              return (
+                <span
+                  key={n}
+                  className="absolute left-1/2 top-1/2 text-[9px] font-bold text-white/90"
+                  style={{
+                    transform: `rotate(${angle}deg) translateY(-98px) rotate(${-angle}deg)`,
+                    transformOrigin: "0 0",
+                  }}
+                >
+                  {n}
+                </span>
+              );
+            })}
+          </div>
+          <div
+            className="absolute inset-0 m-auto w-16 h-16 rounded-full flex items-center justify-center text-2xl font-extrabold"
+            style={{
+              background: "#0d0d1a",
+              border: "3px solid var(--gold)",
+              color: spinResult === null ? "var(--muted)" : numColor(spinResult) === "red" ? "#ff5470" : numColor(spinResult) === "green" ? "#34d399" : "white",
+            }}
+          >
+            {spinning ? "\u{1F3A1}" : spinResult ?? "?"}
+          </div>
         </div>
         {spinResult !== null && !spinning && (
-          <div className="font-bold text-lg capitalize">{spinResult} &mdash; {numColor(spinResult)}</div>
+          <div className="font-bold text-lg capitalize value-pop">{spinResult} &mdash; {numColor(spinResult)}</div>
         )}
       </div>
 

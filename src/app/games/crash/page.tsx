@@ -74,9 +74,21 @@ export default function CrashPage() {
 
   return (
     <GameShell title="Crash" emoji={"\u{1F680}"} subtitle="Cash out before the rocket crashes. The longer you wait, the higher the multiplier — and the risk.">
-      <div className="panel p-10 flex flex-col items-center gap-6">
+      <div className={`panel p-10 flex flex-col items-center gap-6 relative overflow-hidden ${crashed ? "flash-red" : ""}`}>
+        <div className="relative w-full h-28 flex items-end justify-center overflow-hidden">
+          <span
+            className={`text-5xl ${active ? "rocket-fly" : ""}`}
+            style={{
+              transform: crashed ? "translateY(40px) rotate(90deg)" : undefined,
+              opacity: crashed ? 0.4 : 1,
+              transition: "transform 300ms ease-in, opacity 300ms ease-in",
+            }}
+          >
+            {"\u{1F680}"}
+          </span>
+        </div>
         <div
-          className="text-6xl font-black tabular-nums"
+          className={`text-6xl font-black tabular-nums ${crashed ? "shake" : ""}`}
           style={{ color: crashed ? "var(--danger)" : active ? "var(--success)" : "var(--muted)" }}
         >
           {crashed ? `\u{1F4A5} ${crashed.toFixed(2)}x` : `${multiplier.toFixed(2)}x`}

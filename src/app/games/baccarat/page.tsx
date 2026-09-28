@@ -19,11 +19,12 @@ interface RoundResult {
 }
 
 export default function BaccaratPage() {
-  const { user, refresh, pushToast } = useUser();
+  const { user, refresh, pushToast, celebrate } = useUser();
   const [bet, setBet] = useState(10);
   const [side, setSide] = useState<Side>("player");
   const [busy, setBusy] = useState(false);
   const [round, setRound] = useState<RoundResult | null>(null);
+  const [dealSeq, setDealSeq] = useState(0);
 
   if (!user) return null;
 
@@ -38,8 +39,10 @@ export default function BaccaratPage() {
     setBusy(false);
     if (!res.ok) return pushToast("lose", data.error);
     setRound(data);
+    setDealSeq((n) => n + 1);
     const net = data.payout - bet;
     pushToast(net > 0 ? "win" : net === 0 ? "info" : "lose", `${data.winner.toUpperCase()} wins — ${net >= 0 ? "+" : ""}$${net.toLocaleString()}`);
+    if (net >= bet * 4) celebrate();
     refresh();
   }
 
@@ -50,11 +53,11 @@ export default function BaccaratPage() {
           <>
             <div>
               <h3 className="text-sm text-muted mb-2">Player ({round.playerTotal})</h3>
-              <CardRow cards={round.player} />
+              <CardRow cards={round.player} dealKey={`player-${dealSeq}`} />
             </div>
             <div>
               <h3 className="text-sm text-muted mb-2">Banker ({round.bankerTotal})</h3>
-              <CardRow cards={round.banker} />
+              <CardRow cards={round.banker} dealKey={`banker-${dealSeq}`} />
             </div>
             <div className={`font-bold animate-in ${round.payout > bet ? "text-success" : round.payout === bet ? "text-muted" : "text-danger"}`}>
               {round.winner.toUpperCase()} wins &mdash; {round.payout > bet ? `+$${(round.payout - bet).toLocaleString()}` : round.payout === bet ? "Push" : `-$${bet.toLocaleString()}`}

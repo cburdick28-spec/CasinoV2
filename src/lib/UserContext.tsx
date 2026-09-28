@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { PublicUser } from "./client-types";
+import Confetti from "@/components/Confetti";
 
 interface Toast {
   id: number;
@@ -17,6 +18,7 @@ interface UserContextValue {
   setUser: (u: PublicUser | null) => void;
   toasts: Toast[];
   pushToast: (kind: Toast["kind"], text: string) => void;
+  celebrate: () => void;
 }
 
 const UserContext = createContext<UserContextValue | null>(null);
@@ -27,6 +29,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastId = useRef(0);
+  const [celebrating, setCelebrating] = useState(false);
+  const celebrateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const celebrate = useCallback(() => {
+    setCelebrating(true);
+    if (celebrateTimer.current) clearTimeout(celebrateTimer.current);
+    celebrateTimer.current = setTimeout(() => setCelebrating(false), 2600);
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -56,8 +66,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <UserContext.Provider value={{ user, jackpot, loading, refresh, setUser, toasts, pushToast }}>
+    <UserContext.Provider value={{ user, jackpot, loading, refresh, setUser, toasts, pushToast, celebrate }}>
       {children}
+      <Confetti active={celebrating} />
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-xs">
         {toasts.map((t) => (
           <div

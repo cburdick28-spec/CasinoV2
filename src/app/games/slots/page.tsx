@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
+import SlotReel from "@/components/SlotReel";
 import { useUser } from "@/lib/UserContext";
 
 const SYMBOLS = ["\u{1F352}", "\u{1F34B}", "\u{1F349}", "⭐", "\u{1F48E}", "7️⃣"];
@@ -15,21 +16,29 @@ const PAYTABLE = [
   { sym: "7️⃣", pay: "50x + JACKPOT" },
 ];
 
+const REEL_TIMING = [
+  { delayMs: 0, durationMs: 1200 },
+  { delayMs: 250, durationMs: 1450 },
+  { delayMs: 500, durationMs: 1700 },
+];
+
 export default function SlotsPage() {
-  const { user, refresh, pushToast } = useUser();
+  const { user, refresh, pushToast, celebrate } = useUser();
   const [bet, setBet] = useState(10);
-  const [reels, setReels] = useState<string[]>(["\u{1F3B0}", "\u{1F3B0}", "\u{1F3B0}"]);
+  const [finalReels, setFinalReels] = useState<string[]>(["\u{1F352}", "\u{1F34B}", "\u{1F349}"]);
+  const [spinToken, setSpinToken] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [pendingResult, setPendingResult] = useState<{ won: boolean; payout: number; jackpotWon: number } | null>(null);
+  const settledCountRef = useRef(0);
+
+  if (!user) return null;
 
   async function spin() {
     setSpinning(true);
     setMessage(null);
-    const spinTimer = setInterval(() => {
-      setReels([rand(), rand(), rand()]);
-    }, 70);
-    timerRef.current = spinTimer;
+    setPendingResult(null);
+    settledCountRef.current = 0;
 
     const res = await fetch("/api/games/slots", {
       method: "POST",
@@ -38,47 +47,52 @@ export default function SlotsPage() {
     });
     const data = await res.json();
 
-    setTimeout(() => {
-      clearInterval(spinTimer);
-      if (!res.ok) {
-        setSpinning(false);
-        pushToast("lose", data.error || "Something went wrong");
-        return;
-      }
-      setReels(data.reels);
+    if (!res.ok) {
       setSpinning(false);
-      if (data.won) {
+      pushToast("lose", data.error || "Something went wrong");
+      return;
+    }
+
+    setFinalReels(data.reels);
+    setPendingResult({ won: data.won, payout: data.payout, jackpotWon: data.jackpotWon ?? 0 });
+    setSpinToken((n) => n + 1);
+  }
+
+  function onReelSettled() {
+    settledCountRef.current += 1;
+    if (settledCountRef.current === 3 && pendingResult) {
+      const { won, payout, jackpotWon } = pendingResult;
+      setSpinning(false);
+      if (won) {
         setMessage(
-          data.jackpotWon > 0
-            ? `\u{1F3B0} JACKPOT! +$${data.payout.toLocaleString()}`
-            : `✅ Winner! +$${(data.payout - bet).toLocaleString()}`
+          jackpotWon > 0
+            ? `\u{1F3B0} JACKPOT! +$${payout.toLocaleString()}`
+            : `✅ Winner! +$${(payout - bet).toLocaleString()}`
         );
-        pushToast("win", `+$${(data.payout - bet).toLocaleString()}`);
+        pushToast("win", `+$${(payout - bet).toLocaleString()}`);
+        celebrate();
       } else {
         setMessage(`❌ No match. -$${bet.toLocaleString()}`);
         pushToast("lose", `-$${bet.toLocaleString()}`);
       }
       refresh();
-    }, 900);
+    }
   }
-
-  function rand() {
-    return SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
-  }
-
-  if (!user) return null;
 
   return (
     <GameShell title="Slots" emoji={"\u{1F3B0}"} subtitle="Match 3 symbols for the full payout, or 2 for a smaller win.">
       <div className="panel p-8 flex flex-col items-center gap-6">
         <div className="flex gap-4">
-          {reels.map((s, i) => (
-            <div
+          {finalReels.map((s, i) => (
+            <SlotReel
               key={i}
-              className="w-24 h-28 rounded-xl border-4 border-[var(--gold)] bg-[#0d0d1a] flex items-center justify-center text-5xl"
-            >
-              {s}
-            </div>
+              symbols={SYMBOLS}
+              finalSymbol={s}
+              spinToken={spinToken}
+              delayMs={REEL_TIMING[i].delayMs}
+              durationMs={REEL_TIMING[i].durationMs}
+              onSettled={onReelSettled}
+            />
           ))}
         </div>
         {message && <div className="text-xl font-bold animate-in">{message}</div>}
