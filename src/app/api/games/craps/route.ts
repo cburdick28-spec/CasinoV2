@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clampBet, jsonError, requireUser } from "@/lib/api";
-import { addMoney, clearGameState, getGameState, recordGame, setGameState } from "@/lib/account";
+import { addMoney, clearGameState, deductBet, getGameState, isDevAccount, recordGame, setGameState } from "@/lib/account";
 import { randInt } from "@/lib/rng";
 import { MAX_BET } from "@/lib/vip";
 
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     if (!state || state.phase !== "point" || !state.point) return jsonError("No point established");
     const odds = clampBet(body?.amount, money, MAX_BET);
     if (odds === null) return jsonError("Invalid odds amount");
-    await addMoney(user.id, -odds);
+    if (!(await deductBet(user.id, odds, isDevAccount(user)))) return jsonError("Not enough balance");
     state.oddsBet += odds;
     await setGameState(user.id, GAME, state);
     return NextResponse.json({ state, balance: await addMoney(user.id, 0) });
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   if (!state) {
     const bet = clampBet(body?.bet, money, MAX_BET);
     if (bet === null) return jsonError("Invalid bet amount");
-    await addMoney(user.id, -bet);
+    if (!(await deductBet(user.id, bet, isDevAccount(user)))) return jsonError("Not enough balance");
     state = { phase: "come_out", point: null, bet, oddsBet: 0 };
   }
 

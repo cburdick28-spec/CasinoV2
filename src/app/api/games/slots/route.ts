@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clampBet, jsonError, requireUser } from "@/lib/api";
-import { addMoney, currentJackpot, recordGame, unlockAchievement } from "@/lib/account";
+import { addMoney, currentJackpot, deductBet, isDevAccount, recordGame, unlockAchievement } from "@/lib/account";
 import { addToJackpot, setJackpot } from "@/lib/db";
 import { randInt } from "@/lib/rng";
 import { MAX_BET } from "@/lib/vip";
@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const bet = clampBet(body?.bet, money, MAX_BET);
   if (bet === null) return jsonError("Invalid bet amount");
+  if (!(await deductBet(user.id, bet, isDevAccount(user)))) return jsonError("Not enough balance");
 
   const reels = [weightedSymbol(), weightedSymbol(), weightedSymbol()];
   const jackpotBefore = await currentJackpot();
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
     await addToJackpot(Math.ceil(bet * 0.2));
   }
 
-  await addMoney(user.id, won ? payout - bet : -bet);
+  if (won) await addMoney(user.id, payout);
   await recordGame(user.id, "\u{1F3B0} Slots", won, bet, payout);
 
   return NextResponse.json({
