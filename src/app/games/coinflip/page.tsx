@@ -58,7 +58,7 @@ export default function CoinFlipPage() {
   }
 
   return (
-    <GameShell title="Coin Flip" emoji="\u{1FA99}" subtitle="Call it right and keep the streak going — each win multiplies your pot by 1.95x. Cash out any time.">
+    <GameShell title="Coin Flip" emoji={"\u{1FA99}"} subtitle="Call it right and keep the streak going — each win multiplies your pot by 1.95x. Cash out any time.">
       <div className="panel p-8 flex flex-col items-center gap-6">
         <div className="text-7xl">{lastResult === "heads" ? "\u{1FA99}" : lastResult === "tails" ? "\u{1FA99}" : "❓"}</div>
         {lastResult && <div className="font-bold">Last flip: {lastResult}</div>}

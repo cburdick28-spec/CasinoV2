@@ -9,7 +9,7 @@ export default function ProfilePage() {
   if (!user) return null;
 
   return (
-    <GameShell title="Profile" emoji="\u{1F3AD}" subtitle="Your VIP progress and achievements.">
+    <GameShell title="Profile" emoji={"\u{1F3AD}"} subtitle="Your VIP progress and achievements.">
       <div className="panel p-6">
         <h3 className="font-bold mb-4">VIP Tiers</h3>
         <div className="flex flex-col gap-2">

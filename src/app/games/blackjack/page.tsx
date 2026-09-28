@@ -78,7 +78,7 @@ export default function BlackjackPage() {
   const canSurrender = canAct && hand!.cards.length === 2 && state!.hands.length === 1;
 
   return (
-    <GameShell title="Blackjack" emoji="\u{1F0CF}" subtitle="Dealer stands on 17. Blackjack pays 3:2.">
+    <GameShell title="Blackjack" emoji={"\u{1F0CF}"} subtitle="Dealer stands on 17. Blackjack pays 3:2.">
       <div className="panel p-6 flex flex-col gap-6">
         {!state?.active && (
           <div className="flex flex-wrap items-center gap-3">

@@ -100,7 +100,7 @@ export default function RoulettePage() {
   }
 
   return (
-    <GameShell title="Roulette" emoji="\u{1F3A1}" subtitle="Build a bet slip across the board, then spin once.">
+    <GameShell title="Roulette" emoji={"\u{1F3A1}"} subtitle="Build a bet slip across the board, then spin once.">
       <div className="panel p-6 flex flex-col items-center gap-4">
         <div
           className={`w-32 h-32 rounded-full border-8 flex items-center justify-center text-3xl font-extrabold transition-transform ${spinning ? "animate-spin" : ""}`}

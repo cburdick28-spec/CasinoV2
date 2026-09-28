@@ -64,7 +64,7 @@ export default function PlinkoPage() {
   const table = MULTIPLIERS[risk];
 
   return (
-    <GameShell title="Plinko" emoji="\u{1F3B3}" subtitle="Drop the ball through the pegs — where it lands sets your multiplier.">
+    <GameShell title="Plinko" emoji={"\u{1F3B3}"} subtitle="Drop the ball through the pegs — where it lands sets your multiplier.">
       <div className="panel p-6 flex flex-col items-center gap-4">
         <div className="relative w-full max-w-lg" style={{ height: 260 }}>
           {Array.from({ length: ROWS }).map((_, r) => (

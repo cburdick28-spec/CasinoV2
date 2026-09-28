@@ -63,7 +63,7 @@ export default function CrapsPage() {
   }
 
   return (
-    <GameShell title="Craps" emoji="\u{1F3B2}" subtitle="Classic pass-line craps. Back your point with an odds bet for a house-edge-free boost.">
+    <GameShell title="Craps" emoji={"\u{1F3B2}"} subtitle="Classic pass-line craps. Back your point with an odds bet for a house-edge-free boost.">
       <div className="panel p-6 flex flex-col items-center gap-5">
         <div className="flex gap-4 text-7xl h-24 items-center">
           {dice ? (

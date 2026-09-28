@@ -66,7 +66,7 @@ export default function HigherLowerPage() {
   const currentCard = state?.card ?? null;
 
   return (
-    <GameShell title="Higher / Lower" emoji="\u{1F53C}" subtitle="Guess whether the next card is higher or lower. True-odds payouts, 5% house edge, cash out any time.">
+    <GameShell title="Higher / Lower" emoji={"\u{1F53C}"} subtitle="Guess whether the next card is higher or lower. True-odds payouts, 5% house edge, cash out any time.">
       <div className="panel p-8 flex flex-col items-center gap-6">
         <div className="card-face text-3xl">{currentCard ? label(currentCard) : "?"}</div>
 

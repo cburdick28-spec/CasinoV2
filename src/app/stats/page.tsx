@@ -21,7 +21,7 @@ export default function StatsPage() {
   ];
 
   return (
-    <GameShell title="Stats" emoji="\u{1F4CA}" subtitle="Your lifetime performance across every game.">
+    <GameShell title="Stats" emoji={"\u{1F4CA}"} subtitle="Your lifetime performance across every game.">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {tiles.map((t) => (
           <div key={t.label} className="panel p-4 text-center">

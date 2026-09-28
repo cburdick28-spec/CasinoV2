@@ -30,7 +30,7 @@ export default function HorseRacingPage() {
       .then((d) => setHorses(d.horses));
   }, []);
 
-  if (!user || horses.length === 0) return <GameShell title="Horse Racing" emoji="\u{1F407}"><div className="text-muted">Loading horses...</div></GameShell>;
+  if (!user || horses.length === 0) return <GameShell title="Horse Racing" emoji={"\u{1F407}"}><div className="text-muted">Loading horses...</div></GameShell>;
 
   async function startRace() {
     setRacing(true);
@@ -63,7 +63,7 @@ export default function HorseRacingPage() {
   }
 
   return (
-    <GameShell title="Horse Racing" emoji="\u{1F407}" subtitle="Pick your horse and watch the race play out.">
+    <GameShell title="Horse Racing" emoji={"\u{1F407}"} subtitle="Pick your horse and watch the race play out.">
       <div className="panel p-5">
         <h3 className="text-sm text-muted mb-3">Pick your horse</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">

@@ -50,7 +50,7 @@ export default function AdminPage() {
   }
 
   return (
-    <GameShell title="Admin" emoji="\u{1F451}" subtitle="Developer tools — give money, manage timeouts, reset balances.">
+    <GameShell title="Admin" emoji={"\u{1F451}"} subtitle="Developer tools — give money, manage timeouts, reset balances.">
       <div className="panel p-6 flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <select value={target} onChange={(e) => setTarget(e.target.value)}>

@@ -48,7 +48,7 @@ export default function ChatPage() {
   }
 
   return (
-    <GameShell title="Chat" emoji="\u{1F4AC}" subtitle="Say hi to the rest of the casino floor.">
+    <GameShell title="Chat" emoji={"\u{1F4AC}"} subtitle="Say hi to the rest of the casino floor.">
       <div className="panel p-4 flex flex-col h-[60vh]">
         <div className="flex-1 overflow-y-auto flex flex-col gap-2 pr-1">
           {messages.map((m) => (

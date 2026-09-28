@@ -9,16 +9,17 @@ interface SlotSymbol {
   id: string;
   weight: number;
   triplePay: number;
+  twoPay: number;
   isJackpot?: boolean;
 }
 
 export const SYMBOLS: SlotSymbol[] = [
-  { id: "\u{1F352}", weight: 30, triplePay: 3 }, // cherries
-  { id: "\u{1F34B}", weight: 25, triplePay: 4 }, // lemon
-  { id: "\u{1F349}", weight: 20, triplePay: 6 }, // watermelon
-  { id: "⭐", weight: 12, triplePay: 10 }, // star
-  { id: "\u{1F48E}", weight: 8, triplePay: 25 }, // diamond
-  { id: "7️⃣", weight: 4, triplePay: 50, isJackpot: true },
+  { id: "\u{1F352}", weight: 30, triplePay: 3, twoPay: 1.5 }, // cherries
+  { id: "\u{1F34B}", weight: 25, triplePay: 4, twoPay: 2 }, // lemon
+  { id: "\u{1F349}", weight: 20, triplePay: 6, twoPay: 2.5 }, // watermelon
+  { id: "⭐", weight: 12, triplePay: 10, twoPay: 4 }, // star
+  { id: "\u{1F48E}", weight: 8, triplePay: 25, twoPay: 8 }, // diamond
+  { id: "7️⃣", weight: 4, triplePay: 50, twoPay: 15, isJackpot: true },
 ];
 
 function weightedSymbol(): SlotSymbol {
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
     }
   } else if (reels[0].id === reels[1].id || reels[1].id === reels[2].id) {
     const matched = reels[0].id === reels[1].id ? reels[0] : reels[1];
-    payout = Math.max(1, Math.floor((bet * matched.triplePay) / 4));
+    payout = Math.floor(bet * matched.twoPay);
     won = true;
   } else {
     addToJackpot(Math.ceil(bet * 0.2));

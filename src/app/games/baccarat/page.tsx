@@ -44,7 +44,7 @@ export default function BaccaratPage() {
   }
 
   return (
-    <GameShell title="Baccarat" emoji="\u{1F3B4}" subtitle="Punto Banco — bet on Player, Banker, or Tie. Cards deal and draw automatically by house rules.">
+    <GameShell title="Baccarat" emoji={"\u{1F3B4}"} subtitle="Punto Banco — bet on Player, Banker, or Tie. Cards deal and draw automatically by house rules.">
       <div className="panel p-6 flex flex-col gap-6">
         {round && (
           <>

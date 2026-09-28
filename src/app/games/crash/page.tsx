@@ -73,7 +73,7 @@ export default function CrashPage() {
   }
 
   return (
-    <GameShell title="Crash" emoji="\u{1F680}" subtitle="Cash out before the rocket crashes. The longer you wait, the higher the multiplier — and the risk.">
+    <GameShell title="Crash" emoji={"\u{1F680}"} subtitle="Cash out before the rocket crashes. The longer you wait, the higher the multiplier — and the risk.">
       <div className="panel p-10 flex flex-col items-center gap-6">
         <div
           className="text-6xl font-black tabular-nums"

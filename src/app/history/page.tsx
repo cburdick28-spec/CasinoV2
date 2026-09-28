@@ -22,7 +22,7 @@ export default function HistoryPage() {
   }, []);
 
   return (
-    <GameShell title="Bet History" emoji="\u{1F4C8}" subtitle="Your last 100 bets.">
+    <GameShell title="Bet History" emoji={"\u{1F4C8}"} subtitle="Your last 100 bets.">
       <div className="panel divide-y divide-[var(--border)] overflow-x-auto">
         {rows.map((r) => (
           <div key={r.id} className="flex items-center gap-3 px-5 py-3 text-sm">

@@ -69,7 +69,7 @@ export default function SlotsPage() {
   if (!user) return null;
 
   return (
-    <GameShell title="Slots" emoji="\u{1F3B0}" subtitle="Match 3 symbols for the full payout, or 2 for a smaller win.">
+    <GameShell title="Slots" emoji={"\u{1F3B0}"} subtitle="Match 3 symbols for the full payout, or 2 for a smaller win.">
       <div className="panel p-8 flex flex-col items-center gap-6">
         <div className="flex gap-4">
           {reels.map((s, i) => (

@@ -21,7 +21,7 @@ export default function LeaderboardPage() {
   }, []);
 
   return (
-    <GameShell title="Leaderboard" emoji="\u{1F3C6}" subtitle="Top 20 players by balance.">
+    <GameShell title="Leaderboard" emoji={"\u{1F3C6}"} subtitle="Top 20 players by balance.">
       <div className="panel divide-y divide-[var(--border)]">
         {rows.map((r, i) => (
           <div key={r.username} className="flex items-center gap-3 px-5 py-3">
