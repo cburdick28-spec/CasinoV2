@@ -22,5 +22,7 @@ export const GAMES: GameMeta[] = [
   { slug: "wheel", name: "Wheel", emoji: "\u{1F3A1}", desc: "One spin, one multiplier — bust to 5x.", tag: "New" },
   { slug: "keno", name: "Keno", emoji: "\u{1F3B1}", desc: "Pick your numbers and see how many of the 10 drawn you match." },
   { slug: "war", name: "Casino War", emoji: "\u{2694}\u{FE0F}", desc: "Highest card wins. Tie? Surrender or go to war.", tag: "New" },
-  { slug: "sicbo", name: "Sic Bo", emoji: "\u{1F3B2}", desc: "Three dice — big, small, a number, or chase a triple.", tag: "New" },
+  { slug: "sicbo", name: "Sic Bo", emoji: "\u{1F3B2}", desc: "Three dice — big, small, a number, or chase a triple." },
+  { slug: "videopoker", name: "Video Poker", emoji: "\u{1F0CF}", desc: "Jacks or Better, 9/6 paytable. Hold your cards, draw the rest.", tag: "New" },
+  { slug: "limbo", name: "Limbo", emoji: "\u{1F4C9}", desc: "Set a target multiplier and see if the roll clears it.", tag: "New" },
 ];
