@@ -20,5 +20,7 @@ export const GAMES: GameMeta[] = [
   { slug: "higherlower", name: "Higher / Lower", emoji: "\u{1F53C}", desc: "Guess the next card with true-odds payouts." },
   { slug: "mines", name: "Mines", emoji: "\u{1F4A3}", desc: "Reveal gems, dodge mines, and cash out whenever you like." },
   { slug: "wheel", name: "Wheel", emoji: "\u{1F3A1}", desc: "One spin, one multiplier — bust to 5x.", tag: "New" },
-  { slug: "keno", name: "Keno", emoji: "\u{1F3B1}", desc: "Pick your numbers and see how many of the 10 drawn you match.", tag: "New" },
+  { slug: "keno", name: "Keno", emoji: "\u{1F3B1}", desc: "Pick your numbers and see how many of the 10 drawn you match." },
+  { slug: "war", name: "Casino War", emoji: "\u{2694}\u{FE0F}", desc: "Highest card wins. Tie? Surrender or go to war.", tag: "New" },
+  { slug: "sicbo", name: "Sic Bo", emoji: "\u{1F3B2}", desc: "Three dice — big, small, a number, or chase a triple.", tag: "New" },
 ];
