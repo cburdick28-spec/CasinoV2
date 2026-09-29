@@ -5,12 +5,25 @@ import { randInt } from "@/lib/rng";
 import { MAX_BET } from "@/lib/vip";
 
 const ROWS = 12;
+export const MAX_BALLS = 10;
 
 export const MULTIPLIERS: Record<"low" | "medium" | "high", number[]> = {
   low: [8, 3, 1.5, 1.2, 1, 0.5, 0.3, 0.5, 1, 1.2, 1.5, 3, 8],
   medium: [24, 8, 3, 1.5, 0.7, 0.4, 0.2, 0.4, 0.7, 1.5, 3, 8, 24],
   high: [76, 15, 6, 2, 0.5, 0.2, 0.1, 0.2, 0.5, 2, 6, 15, 76],
 };
+
+function dropOne(table: number[]) {
+  const path: number[] = [];
+  let bucket = 0;
+  for (let i = 0; i < ROWS; i++) {
+    const step = randInt(0, 1);
+    path.push(step);
+    bucket += step;
+  }
+  const multiplier = table[bucket];
+  return { path, bucket, multiplier };
+}
 
 export async function POST(req: NextRequest) {
   const result = await requireUser();
@@ -21,28 +34,34 @@ export async function POST(req: NextRequest) {
   const risk = ["low", "medium", "high"].includes(body?.risk) ? body.risk : "medium";
   if (bet === null) return jsonError("Invalid bet amount");
 
-  const path: number[] = [];
-  let bucket = 0;
-  for (let i = 0; i < ROWS; i++) {
-    const step = randInt(0, 1);
-    path.push(step);
-    bucket += step;
+  const balls = Math.floor(Number(body?.balls) || 1);
+  if (!Number.isFinite(balls) || balls < 1 || balls > MAX_BALLS) {
+    return jsonError(`Balls must be between 1 and ${MAX_BALLS}`);
   }
 
-  const table = MULTIPLIERS[risk as "low" | "medium" | "high"];
-  const multiplier = table[bucket];
-  const payout = Math.floor(bet * multiplier);
-  const won = payout > bet;
+  const totalStake = bet * balls;
+  if (totalStake > money) return jsonError("Not enough balance for that many balls");
 
-  await addMoney(user.id, payout - bet);
-  await recordGame(user.id, "\u{1F3B3} Plinko", won, bet, payout);
-  if (multiplier === Math.max(...table)) await unlockAchievement(user.id, "plinko_max");
+  const table = MULTIPLIERS[risk as "low" | "medium" | "high"];
+  const maxMultiplier = Math.max(...table);
+
+  const results = Array.from({ length: balls }, () => {
+    const { path, bucket, multiplier } = dropOne(table);
+    const payout = Math.floor(bet * multiplier);
+    return { path, bucket, multiplier, payout };
+  });
+
+  const totalPayout = results.reduce((sum, r) => sum + r.payout, 0);
+  const won = totalPayout > totalStake;
+
+  await addMoney(user.id, totalPayout - totalStake);
+  await recordGame(user.id, "\u{1F3B3} Plinko", won, totalStake, totalPayout);
+  if (results.some((r) => r.multiplier === maxMultiplier)) await unlockAchievement(user.id, "plinko_max");
 
   return NextResponse.json({
-    path,
-    bucket,
-    multiplier,
-    payout,
+    results,
+    totalStake,
+    totalPayout,
     risk,
     balance: await addMoney(user.id, 0),
   });

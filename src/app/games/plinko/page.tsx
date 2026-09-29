@@ -6,6 +6,8 @@ import BetInput from "@/components/BetInput";
 import { useUser } from "@/lib/UserContext";
 
 const ROWS = 12;
+const MAX_BALLS = 10;
+const BALL_COLORS = ["#ffd54a", "#ff5470", "#34d399", "#60a5fa", "#c084fc", "#fb923c", "#f472b6", "#a3e635", "#22d3ee", "#f87171"];
 type Risk = "low" | "medium" | "high";
 
 const MULTIPLIERS: Record<Risk, number[]> = {
@@ -14,25 +16,41 @@ const MULTIPLIERS: Record<Risk, number[]> = {
   high: [76, 15, 6, 2, 0.5, 0.2, 0.1, 0.2, 0.5, 2, 6, 15, 76],
 };
 
+interface BallResult {
+  path: number[];
+  bucket: number;
+  multiplier: number;
+  payout: number;
+}
+
+interface LiveBall {
+  x: number;
+  row: number;
+  color: string;
+}
+
 export default function PlinkoPage() {
   const { user, refresh, pushToast, celebrate } = useUser();
   const [bet, setBet] = useState(10);
+  const [ballCount, setBallCount] = useState(1);
   const [risk, setRisk] = useState<Risk>("medium");
   const [dropping, setDropping] = useState(false);
-  const [ballX, setBallX] = useState(50);
-  const [ballRow, setBallRow] = useState(-1);
-  const [landed, setLanded] = useState<{ bucket: number; multiplier: number; payout: number } | null>(null);
+  const [liveBalls, setLiveBalls] = useState<LiveBall[]>([]);
+  const [landedBuckets, setLandedBuckets] = useState<number[]>([]);
+  const [summary, setSummary] = useState<{ totalStake: number; totalPayout: number; results: BallResult[] } | null>(null);
 
   if (!user) return null;
 
+  const totalCost = bet * ballCount;
+
   async function drop() {
     setDropping(true);
-    setLanded(null);
-    setBallRow(-1);
+    setSummary(null);
+    setLandedBuckets([]);
     const res = await fetch("/api/games/plinko", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bet, risk }),
+      body: JSON.stringify({ bet, risk, balls: ballCount }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -40,22 +58,28 @@ export default function PlinkoPage() {
       return pushToast("lose", data.error);
     }
 
-    const path: number[] = data.path;
-    let x = 50;
+    const results: BallResult[] = data.results;
+    setLiveBalls(results.map((_, i) => ({ x: 50, row: -1, color: BALL_COLORS[i % BALL_COLORS.length] })));
+
     let row = 0;
     const step = () => {
-      if (row >= path.length) {
+      if (row >= ROWS) {
         setDropping(false);
-        setLanded({ bucket: data.bucket, multiplier: data.multiplier, payout: data.payout });
-        pushToast(data.payout > bet ? "win" : "lose", `${data.multiplier}x — ${data.payout > bet ? "+" : ""}$${(data.payout - bet).toLocaleString()}`);
-        if (data.multiplier >= 15) celebrate();
+        setLandedBuckets(results.map((r) => r.bucket));
+        setSummary({ totalStake: data.totalStake, totalPayout: data.totalPayout, results });
+        const net = data.totalPayout - data.totalStake;
+        pushToast(net >= 0 ? "win" : "lose", `${net >= 0 ? "+" : ""}$${net.toLocaleString()}`);
+        const table = MULTIPLIERS[risk];
+        if (results.some((r) => r.multiplier >= Math.max(...table) * 0.5)) celebrate();
         refresh();
         return;
       }
-      const shift = (path[row] === 1 ? 1 : -1) * (50 / (ROWS + 2));
-      x += shift;
-      setBallX(x);
-      setBallRow(row);
+      setLiveBalls((balls) =>
+        balls.map((b, i) => {
+          const shift = results[i].path[row] === 1 ? 1 : -1;
+          return { ...b, x: b.x + shift * (50 / (ROWS + 2)), row };
+        })
+      );
       row++;
       setTimeout(step, 180);
     };
@@ -63,9 +87,11 @@ export default function PlinkoPage() {
   }
 
   const table = MULTIPLIERS[risk];
+  const bucketCounts = new Array(table.length).fill(0);
+  for (const b of landedBuckets) bucketCounts[b]++;
 
   return (
-    <GameShell title="Plinko" emoji={"\u{1F3B3}"} subtitle="Drop the ball through the pegs — where it lands sets your multiplier.">
+    <GameShell title="Plinko" emoji={"\u{1F3B3}"} subtitle="Drop one ball or many at once — where each lands sets its own multiplier.">
       <div className="panel p-6 flex flex-col items-center gap-4">
         <div className="relative w-full max-w-lg" style={{ height: 260 }}>
           {Array.from({ length: ROWS }).map((_, r) => (
@@ -74,39 +100,48 @@ export default function PlinkoPage() {
                 <span
                   key={c}
                   className={`w-1.5 h-1.5 rounded-full transition-all duration-150 ${
-                    ballRow === r ? "bg-[var(--gold)] scale-150" : "bg-white/30"
+                    liveBalls.some((b) => b.row === r) ? "bg-[var(--gold)] scale-150" : "bg-white/30"
                   }`}
                 />
               ))}
             </div>
           ))}
-          {dropping || landed ? (
+          {liveBalls.map((b, i) => (
             <div
-              className="absolute w-4 h-4 rounded-full bg-[var(--gold)] shadow-lg"
+              key={i}
+              className="absolute w-4 h-4 rounded-full shadow-lg"
               style={{
-                left: `calc(${ballX}% - 8px)`,
-                top: `${((ballRow + 1) / (ROWS + 1)) * 85}%`,
+                left: `calc(${b.x}% - 8px)`,
+                top: `${((b.row + 1) / (ROWS + 1)) * 85}%`,
+                background: b.color,
                 transition: "left 170ms cubic-bezier(0.5, 0, 0.5, 1.6), top 170ms cubic-bezier(0.3, 0.6, 0.4, 1)",
-                boxShadow: "0 0 10px rgba(255, 213, 74, 0.8)",
+                boxShadow: `0 0 10px ${b.color}`,
               }}
             />
-          ) : null}
+          ))}
         </div>
 
         <div className="grid grid-cols-[repeat(13,minmax(0,1fr))] gap-1 w-full max-w-lg text-[10px] text-center">
           {table.map((m, i) => (
-            <div
-              key={i}
-              className={`py-1 rounded font-bold ${landed?.bucket === i ? "bg-[var(--gold)] text-black" : "bg-white/5"}`}
-            >
+            <div key={i} className={`py-1 rounded font-bold relative ${bucketCounts[i] > 0 ? "bg-[var(--gold)] text-black" : "bg-white/5"}`}>
               {m}x
+              {bucketCounts[i] > 1 && (
+                <span className="absolute -top-2 -right-1 bg-[var(--danger)] text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px]">
+                  {bucketCounts[i]}
+                </span>
+              )}
             </div>
           ))}
         </div>
 
-        {landed && (
-          <div className={`font-bold value-pop ${landed.payout > bet ? "text-success" : "text-danger"}`}>
-            Landed on {landed.multiplier}x &mdash; {landed.payout > bet ? "+" : ""}${(landed.payout - bet).toLocaleString()}
+        {summary && (
+          <div className={`font-bold value-pop text-center ${summary.totalPayout >= summary.totalStake ? "text-success" : "text-danger"}`}>
+            {summary.totalPayout >= summary.totalStake ? "+" : ""}
+            ${(summary.totalPayout - summary.totalStake).toLocaleString()} across {summary.results.length} ball
+            {summary.results.length === 1 ? "" : "s"}
+            <div className="text-xs text-muted font-normal mt-1">
+              {summary.results.map((r) => `${r.multiplier}x`).join(", ")}
+            </div>
           </div>
         )}
 
@@ -118,10 +153,26 @@ export default function PlinkoPage() {
           ))}
         </div>
 
+        <div className="flex flex-col items-center gap-2">
+          <label className="text-sm text-muted">Balls</label>
+          <div className="flex flex-wrap gap-1 justify-center">
+            {[1, 2, 3, 5, 10].filter((n) => n <= MAX_BALLS).map((n) => (
+              <button
+                key={n}
+                className={`btn !py-1 !px-3 text-sm ${ballCount === n ? "btn-gold" : "btn-ghost"}`}
+                disabled={dropping}
+                onClick={() => setBallCount(n)}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="flex items-center gap-3">
-          <BetInput bet={bet} setBet={setBet} max={user.money} disabled={dropping} />
-          <button className="btn btn-gold" disabled={dropping || bet > user.money} onClick={drop}>
-            {dropping ? "Dropping..." : "Drop Ball"}
+          <BetInput bet={bet} setBet={setBet} max={Math.floor(user.money / ballCount) || 1} disabled={dropping} />
+          <button className="btn btn-gold" disabled={dropping || totalCost > user.money} onClick={drop}>
+            {dropping ? "Dropping..." : `Drop ${ballCount > 1 ? `${ballCount} Balls` : "Ball"} — $${totalCost.toLocaleString()}`}
           </button>
         </div>
       </div>
