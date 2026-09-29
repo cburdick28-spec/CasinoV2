@@ -15,7 +15,7 @@ interface Horse {
 const TRACK_LENGTH = 30;
 
 export default function HorseRacingPage() {
-  const { user, refresh, pushToast } = useUser();
+  const { user, refresh, pushToast, celebrate } = useUser();
   const [horses, setHorses] = useState<Horse[]>([]);
   const [selected, setSelected] = useState(0);
   const [bet, setBet] = useState(10);
@@ -57,6 +57,7 @@ export default function HorseRacingPage() {
         setRacing(false);
         setResult({ won: data.won, payout: data.payout });
         pushToast(data.won ? "win" : "lose", data.won ? `+$${(data.payout - bet).toLocaleString()}` : `-$${bet.toLocaleString()}`);
+        if (data.won) celebrate();
         refresh();
       }
     }, 90);
@@ -84,16 +85,26 @@ export default function HorseRacingPage() {
           {horses.map((h, i) => {
             const pos = positions[i] ?? 0;
             const pct = Math.min((pos / TRACK_LENGTH) * 100, 100);
+            const isLeading = racing && pos === Math.max(...positions);
             return (
               <div key={h.name} className="flex items-center gap-2">
                 <span className="w-28 text-xs" style={{ color: i === selected ? "var(--gold)" : "white" }}>
                   {h.emoji} {h.name}
                 </span>
-                <div className="flex-1 bg-black/30 rounded h-4 relative">
+                <div className="flex-1 bg-black/30 rounded h-5 relative overflow-visible">
                   <div
-                    className="h-4 rounded transition-all"
-                    style={{ width: `${pct}%`, background: i === selected ? "var(--gold)" : "#4a9a4a" }}
-                  />
+                    className="h-5 rounded transition-all duration-100 ease-linear relative"
+                    style={{ width: `${Math.max(pct, 4)}%`, background: i === selected ? "var(--gold)" : "#4a9a4a" }}
+                  >
+                    {racing && (
+                      <span
+                        className={`absolute -right-1 -top-2 text-base ${isLeading ? "gallop" : ""}`}
+                        style={{ animationDuration: isLeading ? "0.25s" : "0.4s" }}
+                      >
+                        {h.emoji}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             );

@@ -12,34 +12,43 @@ interface CoinState {
 }
 
 export default function CoinFlipPage() {
-  const { user, refresh, pushToast } = useUser();
+  const { user, refresh, pushToast, celebrate } = useUser();
   const [bet, setBet] = useState(10);
   const [side, setSide] = useState<"heads" | "tails">("heads");
   const [state, setState] = useState<CoinState | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [flipping, setFlipping] = useState(false);
+  const [flipSeq, setFlipSeq] = useState(0);
 
   if (!user) return null;
 
   async function flip() {
     setBusy(true);
+    setFlipping(true);
+    setFlipSeq((n) => n + 1);
     const res = await fetch("/api/games/coinflip", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "flip", side, bet: state ? undefined : bet }),
     });
     const data = await res.json();
-    setBusy(false);
-    if (!res.ok) return pushToast("lose", data.error);
-    setLastResult(data.result);
-    if (data.win) {
-      setState(data.state);
-      pushToast("win", `${data.result}! Streak ${data.state.streak} — pot $${data.state.pot.toLocaleString()}`);
-    } else {
-      setState(null);
-      pushToast("lose", `${data.result}! Lost $${(state?.bet ?? bet).toLocaleString()}`);
-    }
-    refresh();
+
+    setTimeout(() => {
+      setBusy(false);
+      setFlipping(false);
+      if (!res.ok) return pushToast("lose", data.error);
+      setLastResult(data.result);
+      if (data.win) {
+        setState(data.state);
+        pushToast("win", `${data.result}! Streak ${data.state.streak} — pot $${data.state.pot.toLocaleString()}`);
+        if (data.state.streak >= 4) celebrate();
+      } else {
+        setState(null);
+        pushToast("lose", `${data.result}! Lost $${(state?.bet ?? bet).toLocaleString()}`);
+      }
+      refresh();
+    }, 900);
   }
 
   async function cashout() {
@@ -60,7 +69,9 @@ export default function CoinFlipPage() {
   return (
     <GameShell title="Coin Flip" emoji={"\u{1FA99}"} subtitle="Call it right and keep the streak going — each win multiplies your pot by 1.95x. Cash out any time.">
       <div className="panel p-8 flex flex-col items-center gap-6">
-        <div className="text-7xl">{lastResult === "heads" ? "\u{1FA99}" : lastResult === "tails" ? "\u{1FA99}" : "❓"}</div>
+        <div key={flipSeq} className={`text-7xl ${flipping ? "coin-flip" : "value-pop"}`}>
+          {lastResult ? "\u{1FA99}" : "❓"}
+        </div>
         {lastResult && <div className="font-bold">Last flip: {lastResult}</div>}
 
         {state ? (

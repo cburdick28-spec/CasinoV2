@@ -18,15 +18,18 @@ function label(n: number) {
 }
 
 export default function HigherLowerPage() {
-  const { user, refresh, pushToast } = useUser();
+  const { user, refresh, pushToast, celebrate } = useUser();
   const [bet, setBet] = useState(10);
   const [state, setState] = useState<HLState | null>(null);
   const [busy, setBusy] = useState(false);
+  const [flip, setFlip] = useState(0);
+  const [wrong, setWrong] = useState(false);
 
   if (!user) return null;
 
   async function guess(direction: "higher" | "lower") {
     setBusy(true);
+    setWrong(false);
     const res = await fetch("/api/games/higherlower", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -34,6 +37,7 @@ export default function HigherLowerPage() {
     });
     const data = await res.json();
     setBusy(false);
+    setFlip((n) => n + 1);
     if (!res.ok) return pushToast("lose", data.error);
     if (data.push) {
       setState(data.state);
@@ -41,9 +45,12 @@ export default function HigherLowerPage() {
     } else if (data.win) {
       setState(data.state);
       pushToast("win", `Correct! Pot now $${data.state.pot.toLocaleString()}`);
+      if (data.state.streak >= 5) celebrate();
     } else {
       setState(null);
+      setWrong(true);
       pushToast("lose", `Wrong — next card was ${label(data.nextCard)}.`);
+      setTimeout(() => setWrong(false), 550);
     }
     refresh();
   }
@@ -67,12 +74,14 @@ export default function HigherLowerPage() {
 
   return (
     <GameShell title="Higher / Lower" emoji={"\u{1F53C}"} subtitle="Guess whether the next card is higher or lower. True-odds payouts, 5% house edge, cash out any time.">
-      <div className="panel p-8 flex flex-col items-center gap-6">
-        <div className="card-face text-3xl">{currentCard ? label(currentCard) : "?"}</div>
+      <div className={`panel p-8 flex flex-col items-center gap-6 ${wrong ? "shake" : ""}`}>
+        <div key={flip} className="card-face text-3xl card-deal">
+          {currentCard ? label(currentCard) : "?"}
+        </div>
 
         {state && (
           <div className="text-lg">
-            Streak <span className="text-[var(--gold)] font-bold">{state.streak}</span> &middot; Pot{" "}
+            Streak <span className="text-[var(--gold)] font-bold count-up">{state.streak}</span> &middot; Pot{" "}
             <span className="text-[var(--gold)] font-bold">${state.pot.toLocaleString()}</span>
           </div>
         )}

@@ -123,20 +123,21 @@ export default function RoulettePage() {
   return (
     <GameShell title="Roulette" emoji={"\u{1F3A1}"} subtitle="Build a bet slip across the board, then spin once.">
       <div className="panel p-6 flex flex-col items-center gap-4">
-        <div className="relative w-56 h-56">
+        <div className="relative w-[22rem] h-[22rem] max-w-full">
           {/* Pointer */}
           <div
             className="absolute left-1/2 -translate-x-1/2 -top-1 z-10"
             style={{
               width: 0,
               height: 0,
-              borderLeft: "8px solid transparent",
-              borderRight: "8px solid transparent",
-              borderTop: "14px solid var(--gold)",
+              borderLeft: "12px solid transparent",
+              borderRight: "12px solid transparent",
+              borderTop: "20px solid var(--gold)",
+              filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.5))",
             }}
           />
           <div
-            className="w-56 h-56 rounded-full border-4 relative overflow-hidden"
+            className={`w-full h-full rounded-full border-4 relative overflow-hidden ${spinning ? "glow" : ""}`}
             style={{
               borderColor: "var(--gold)",
               transform: `rotate(${wheelAngle}deg)`,
@@ -152,21 +153,23 @@ export default function RoulettePage() {
             {WHEEL_ORDER.map((n, i) => {
               const angle = (i / WHEEL_ORDER.length) * 360 + POCKET_ANGLE / 2;
               return (
-                <span
+                <div
                   key={n}
-                  className="absolute left-1/2 top-1/2 text-[9px] font-bold text-white/90"
-                  style={{
-                    transform: `rotate(${angle}deg) translateY(-98px) rotate(${-angle}deg)`,
-                    transformOrigin: "0 0",
-                  }}
+                  className="absolute left-1/2 top-1/2 w-0 h-0"
+                  style={{ transform: `rotate(${angle}deg) translateY(-158px)` }}
                 >
-                  {n}
-                </span>
+                  <span
+                    className="absolute text-[11px] font-bold text-white/90"
+                    style={{ transform: `translate(-50%, -50%) rotate(${-angle}deg)` }}
+                  >
+                    {n}
+                  </span>
+                </div>
               );
             })}
           </div>
           <div
-            className="absolute inset-0 m-auto w-16 h-16 rounded-full flex items-center justify-center text-2xl font-extrabold"
+            className="absolute inset-0 m-auto w-24 h-24 rounded-full flex items-center justify-center text-3xl font-extrabold"
             style={{
               background: "#0d0d1a",
               border: "3px solid var(--gold)",

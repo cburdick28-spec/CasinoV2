@@ -18,5 +18,7 @@ export const GAMES: GameMeta[] = [
   { slug: "horse-racing", name: "Horse Racing", emoji: "\u{1F407}", desc: "Pick a horse and watch the race play out." },
   { slug: "coinflip", name: "Coin Flip", emoji: "\u{1FA99}", desc: "Call it and ride a doubling streak ladder." },
   { slug: "higherlower", name: "Higher / Lower", emoji: "\u{1F53C}", desc: "Guess the next card with true-odds payouts." },
-  { slug: "mines", name: "Mines", emoji: "\u{1F4A3}", desc: "Reveal gems, dodge mines, and cash out whenever you like.", tag: "New" },
+  { slug: "mines", name: "Mines", emoji: "\u{1F4A3}", desc: "Reveal gems, dodge mines, and cash out whenever you like." },
+  { slug: "wheel", name: "Wheel", emoji: "\u{1F3A1}", desc: "One spin, one multiplier — bust to 5x.", tag: "New" },
+  { slug: "keno", name: "Keno", emoji: "\u{1F3B1}", desc: "Pick your numbers and see how many of the 10 drawn you match.", tag: "New" },
 ];

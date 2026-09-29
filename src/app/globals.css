@@ -357,6 +357,48 @@ select:focus {
   animation: rocketWobble 0.6s ease-in-out infinite;
 }
 
+/* ---------- Coin flip ---------- */
+@keyframes coinFlip {
+  0% {
+    transform: rotateY(0deg) translateY(0);
+  }
+  25% {
+    transform: rotateY(720deg) translateY(-40px);
+  }
+  50% {
+    transform: rotateY(1440deg) translateY(0);
+  }
+  75% {
+    transform: rotateY(2160deg) translateY(-16px);
+  }
+  100% {
+    transform: rotateY(2880deg) translateY(0);
+  }
+}
+.coin-flip {
+  display: inline-block;
+  animation: coinFlip 0.9s cubic-bezier(0.3, 0.2, 0.3, 1);
+  transform-style: preserve-3d;
+}
+
+/* ---------- Horse gallop ---------- */
+@keyframes gallop {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-3px) rotate(-4deg);
+  }
+  75% {
+    transform: translateY(-1px) rotate(3deg);
+  }
+}
+.gallop {
+  display: inline-block;
+  animation: gallop 0.35s ease-in-out infinite;
+}
+
 @keyframes screenFlashRed {
   0% {
     background: rgba(255, 84, 112, 0.35);
@@ -377,6 +419,8 @@ select:focus {
   .confetti-piece,
   .rocket-fly,
   .flash-red,
+  .coin-flip,
+  .gallop,
   .animate-in,
   .glow {
     animation: none !important;
