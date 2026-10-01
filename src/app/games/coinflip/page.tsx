@@ -11,6 +11,9 @@ interface CoinState {
   streak: number;
 }
 
+const FLIP_DURATION = 1100;
+const SPINS = 4; // full rotations before settling, purely visual
+
 export default function CoinFlipPage() {
   const { user, refresh, pushToast, celebrate } = useUser();
   const [bet, setBet] = useState(10);
@@ -19,14 +22,12 @@ export default function CoinFlipPage() {
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [flipping, setFlipping] = useState(false);
-  const [flipSeq, setFlipSeq] = useState(0);
+  const [rotation, setRotation] = useState(0);
 
   if (!user) return null;
 
   async function flip() {
     setBusy(true);
-    setFlipping(true);
-    setFlipSeq((n) => n + 1);
     const res = await fetch("/api/games/coinflip", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -34,10 +35,24 @@ export default function CoinFlipPage() {
     });
     const data = await res.json();
 
+    if (!res.ok) {
+      setBusy(false);
+      return pushToast("lose", data.error);
+    }
+
+    // Land exactly on the correct face: heads = 0deg mod 360, tails = 180deg mod 360.
+    const targetMod = data.result === "tails" ? 180 : 0;
+    setFlipping(true);
+    setRotation((prev) => {
+      const currentMod = ((prev % 360) + 360) % 360;
+      let delta = targetMod - currentMod;
+      if (delta <= 0) delta += 360;
+      return prev + SPINS * 360 + delta;
+    });
+
     setTimeout(() => {
       setBusy(false);
       setFlipping(false);
-      if (!res.ok) return pushToast("lose", data.error);
       setLastResult(data.result);
       if (data.win) {
         setState(data.state);
@@ -48,7 +63,7 @@ export default function CoinFlipPage() {
         pushToast("lose", `${data.result}! Lost $${(state?.bet ?? bet).toLocaleString()}`);
       }
       refresh();
-    }, 900);
+    }, FLIP_DURATION);
   }
 
   async function cashout() {
@@ -69,10 +84,16 @@ export default function CoinFlipPage() {
   return (
     <GameShell title="Coin Flip" emoji={"\u{1FA99}"} subtitle="Call it right and keep the streak going — each win multiplies your pot by 1.95x. Cash out any time.">
       <div className="panel p-8 flex flex-col items-center gap-6">
-        <div key={flipSeq} className={`text-7xl ${flipping ? "coin-flip" : "value-pop"}`}>
-          {lastResult ? "\u{1FA99}" : "❓"}
+        <div className="coin-scene">
+          <div
+            className={`coin-3d ${flipping ? "coin-arcing" : ""}`}
+            style={{ transform: `rotateY(${rotation}deg)` }}
+          >
+            <div className="coin-face coin-face-heads">H</div>
+            <div className="coin-face coin-face-tails">T</div>
+          </div>
         </div>
-        {lastResult && <div className="font-bold">Last flip: {lastResult}</div>}
+        {lastResult && !flipping && <div className="font-bold value-pop">Last flip: {lastResult}</div>}
 
         {state ? (
           <div className="flex flex-col items-center gap-3">
@@ -81,10 +102,10 @@ export default function CoinFlipPage() {
               <span className="text-[var(--gold)] font-bold">${state.pot.toLocaleString()}</span>
             </div>
             <div className="flex gap-2">
-              <button className={`btn ${side === "heads" ? "btn-gold" : "btn-ghost"}`} onClick={() => setSide("heads")}>
+              <button className={`btn ${side === "heads" ? "btn-gold" : "btn-ghost"}`} disabled={busy} onClick={() => setSide("heads")}>
                 Heads
               </button>
-              <button className={`btn ${side === "tails" ? "btn-gold" : "btn-ghost"}`} onClick={() => setSide("tails")}>
+              <button className={`btn ${side === "tails" ? "btn-gold" : "btn-ghost"}`} disabled={busy} onClick={() => setSide("tails")}>
                 Tails
               </button>
             </div>
@@ -100,10 +121,10 @@ export default function CoinFlipPage() {
         ) : (
           <div className="flex flex-col items-center gap-3">
             <div className="flex gap-2">
-              <button className={`btn ${side === "heads" ? "btn-gold" : "btn-ghost"}`} onClick={() => setSide("heads")}>
+              <button className={`btn ${side === "heads" ? "btn-gold" : "btn-ghost"}`} disabled={busy} onClick={() => setSide("heads")}>
                 Heads
               </button>
-              <button className={`btn ${side === "tails" ? "btn-gold" : "btn-ghost"}`} onClick={() => setSide("tails")}>
+              <button className={`btn ${side === "tails" ? "btn-gold" : "btn-ghost"}`} disabled={busy} onClick={() => setSide("tails")}>
                 Tails
               </button>
             </div>
