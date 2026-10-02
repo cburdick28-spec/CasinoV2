@@ -10,7 +10,7 @@ import { useUser } from "@/lib/UserContext";
 // Three.js touches the WebGL canvas directly, so it can only run in the browser.
 const CrashScene3D = dynamic(() => import("@/components/three/CrashScene3D"), {
   ssr: false,
-  loading: () => <div className="w-full flex items-center justify-center text-muted" style={{ height: 300 }}>Fueling rocket...</div>,
+  loading: () => null,
 });
 
 export default function CrashPage() {

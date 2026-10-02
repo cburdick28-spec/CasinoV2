@@ -10,7 +10,7 @@ import { useUser } from "@/lib/UserContext";
 // Three.js touches the WebGL canvas directly, so it can only run in the browser.
 const HorseRaceScene3D = dynamic(() => import("@/components/three/HorseRaceScene3D"), {
   ssr: false,
-  loading: () => <div className="w-full flex items-center justify-center text-muted" style={{ height: 320 }}>Loading track...</div>,
+  loading: () => null,
 });
 
 interface Horse {

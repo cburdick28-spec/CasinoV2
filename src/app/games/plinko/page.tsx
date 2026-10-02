@@ -10,7 +10,7 @@ import { useUser } from "@/lib/UserContext";
 // Three.js touches the WebGL canvas directly, so it can only run in the browser.
 const PlinkoScene3D = dynamic(() => import("@/components/three/PlinkoScene3D"), {
   ssr: false,
-  loading: () => <div className="w-full flex items-center justify-center text-muted" style={{ height: 320 }}>Setting up the board...</div>,
+  loading: () => null,
 });
 
 const ROWS = 12;

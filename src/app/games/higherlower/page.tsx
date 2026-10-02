@@ -11,14 +11,7 @@ import type { Card, Suit } from "@/lib/types";
 // Three.js touches the WebGL canvas directly, so it can only run in the browser.
 const HigherLowerScene3D = dynamic(() => import("@/components/three/HigherLowerScene3D"), {
   ssr: false,
-  loading: () => (
-    <div
-      className="w-full rounded-2xl border border-[var(--border)] flex items-center justify-center text-muted"
-      style={{ height: 320 }}
-    >
-      Loading table...
-    </div>
-  ),
+  loading: () => null,
 });
 
 interface HLState {

@@ -11,7 +11,7 @@ import { KENO_MAX_NUMBER, KENO_MAX_PICKS, PAYTABLE } from "@/lib/games/keno";
 // Three.js touches the WebGL canvas directly, so it can only run in the browser.
 const KenoScene3D = dynamic(() => import("@/components/three/KenoScene3D"), {
   ssr: false,
-  loading: () => <div className="w-full flex items-center justify-center text-muted" style={{ height: 300 }}>Loading cage...</div>,
+  loading: () => null,
 });
 
 export default function KenoPage() {

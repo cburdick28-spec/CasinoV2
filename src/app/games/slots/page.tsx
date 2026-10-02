@@ -10,7 +10,7 @@ import { useUser } from "@/lib/UserContext";
 // Three.js touches the WebGL canvas directly, so it can only run in the browser.
 const SlotsScene3D = dynamic(() => import("@/components/three/SlotsScene3D"), {
   ssr: false,
-  loading: () => <div className="w-full flex items-center justify-center text-muted" style={{ height: 340 }}>Loading reels...</div>,
+  loading: () => null,
 });
 
 const SYMBOLS = ["\u{1F352}", "\u{1F34B}", "\u{1F349}", "⭐", "\u{1F48E}", "7️⃣"];

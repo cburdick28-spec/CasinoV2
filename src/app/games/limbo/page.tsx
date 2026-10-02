@@ -11,7 +11,7 @@ import { MAX_TARGET, MIN_TARGET } from "@/lib/games/limbo";
 // Three.js touches the WebGL canvas directly, so it can only run in the browser.
 const LimboScene3D = dynamic(() => import("@/components/three/LimboScene3D"), {
   ssr: false,
-  loading: () => <div className="w-full flex items-center justify-center text-muted" style={{ height: 380 }}>Loading gauge...</div>,
+  loading: () => null,
 });
 
 const PRESET_TARGETS = [1.5, 2, 5, 10, 50, 100];

@@ -11,14 +11,7 @@ import type { Card } from "@/lib/types";
 // Three.js touches the WebGL canvas directly, so it can only run in the browser.
 const PokerScene3D = dynamic(() => import("@/components/three/PokerScene3D"), {
   ssr: false,
-  loading: () => (
-    <div
-      className="w-full rounded-2xl border border-[var(--border)] flex items-center justify-center text-muted"
-      style={{ height: 320 }}
-    >
-      Setting up the table...
-    </div>
-  ),
+  loading: () => null,
 });
 
 interface StateView {

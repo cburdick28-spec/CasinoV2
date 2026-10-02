@@ -10,7 +10,7 @@ import { useUser } from "@/lib/UserContext";
 // Three.js touches the WebGL canvas directly, so it can only run in the browser.
 const MinesScene3D = dynamic(() => import("@/components/three/MinesScene3D"), {
   ssr: false,
-  loading: () => <div className="w-full flex items-center justify-center text-muted" style={{ height: 360 }}>Loading table...</div>,
+  loading: () => null,
 });
 
 const GRID_SIZE = 25;
