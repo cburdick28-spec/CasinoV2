@@ -8,6 +8,7 @@ import Money from "@/components/Money";
 
 const NAV_LINKS = [
   { href: "/", label: "Lobby" },
+  { href: "/floor", label: "3D Floor" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/stats", label: "Stats" },
   { href: "/history", label: "History" },

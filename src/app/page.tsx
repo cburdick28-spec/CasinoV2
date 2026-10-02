@@ -49,6 +49,20 @@ export default function Home() {
         </div>
       )}
 
+      <Link
+        href="/floor"
+        className="panel p-5 flex items-center gap-4 hover:border-[var(--gold)] transition-colors"
+      >
+        <div className="text-4xl">{"\u{1F3DB}\u{FE0F}"}</div>
+        <div>
+          <div className="font-bold text-lg flex items-center gap-2">
+            Walk the 3D Casino Floor
+            <span className="text-[10px] font-bold bg-[var(--accent)] text-white px-2 py-0.5 rounded-full">New</span>
+          </div>
+          <div className="text-sm text-muted">A real-time Three.js floor map — orbit around and click a podium to jump into any game.</div>
+        </div>
+      </Link>
+
       <div>
         <h2 className="text-lg font-bold mb-3">Pick a game</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
