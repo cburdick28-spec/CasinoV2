@@ -1,10 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
+import Scene3DBase from "@/components/three/Scene3DBase";
 import { useUser } from "@/lib/UserContext";
 import { KENO_MAX_NUMBER, KENO_MAX_PICKS, PAYTABLE } from "@/lib/games/keno";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const KenoScene3D = dynamic(() => import("@/components/three/KenoScene3D"), {
+  ssr: false,
+  loading: () => <div className="w-full flex items-center justify-center text-muted" style={{ height: 300 }}>Loading cage...</div>,
+});
 
 export default function KenoPage() {
   const { user, refresh, pushToast, celebrate } = useUser();
@@ -75,6 +83,10 @@ export default function KenoPage() {
   return (
     <GameShell title="Keno" emoji={"\u{1F3B1}"} subtitle={`Pick up to ${KENO_MAX_PICKS} numbers from 1-${KENO_MAX_NUMBER}. 10 are drawn — the more you match, the bigger the multiplier.`}>
       <div className="panel p-6 flex flex-col items-center gap-5">
+        <Scene3DBase height={300} cameraPosition={[0, 2.4, 4.6]} fov={48}>
+          <KenoScene3D drawn={drawnSoFar} picks={picks} spinning={busy} />
+        </Scene3DBase>
+
         <div className="grid grid-cols-8 sm:grid-cols-10 gap-2 w-full max-w-xl">
           {Array.from({ length: KENO_MAX_NUMBER }, (_, i) => i + 1).map((n) => {
             const picked = picks.includes(n);

@@ -1,9 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
+import Scene3DBase from "@/components/three/Scene3DBase";
 import { useUser } from "@/lib/UserContext";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const CrashScene3D = dynamic(() => import("@/components/three/CrashScene3D"), {
+  ssr: false,
+  loading: () => <div className="w-full flex items-center justify-center text-muted" style={{ height: 300 }}>Fueling rocket...</div>,
+});
 
 export default function CrashPage() {
   const { user, refresh, pushToast } = useUser();
@@ -11,6 +19,7 @@ export default function CrashPage() {
   const [active, setActive] = useState(false);
   const [multiplier, setMultiplier] = useState(1);
   const [crashed, setCrashed] = useState<number | null>(null);
+  const [cashedOutAt, setCashedOutAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -37,6 +46,7 @@ export default function CrashPage() {
   async function placeBet() {
     setBusy(true);
     setCrashed(null);
+    setCashedOutAt(null);
     const res = await fetch("/api/games/crash", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -67,6 +77,7 @@ export default function CrashPage() {
       setCrashed(data.crashPoint);
       pushToast("lose", `Crashed at ${data.crashPoint.toFixed(2)}x — too slow!`);
     } else {
+      setCashedOutAt(data.cashedOutAt);
       pushToast("win", `Cashed out at ${data.cashedOutAt.toFixed(2)}x — +$${(data.payout - bet).toLocaleString()}`);
     }
     refresh();
@@ -75,18 +86,9 @@ export default function CrashPage() {
   return (
     <GameShell title="Crash" emoji={"\u{1F680}"} subtitle="Cash out before the rocket crashes. The longer you wait, the higher the multiplier — and the risk.">
       <div className={`panel p-10 flex flex-col items-center gap-6 relative overflow-hidden ${crashed ? "flash-red" : ""}`}>
-        <div className="relative w-full h-28 flex items-end justify-center overflow-hidden">
-          <span
-            className={`text-5xl ${active ? "rocket-fly" : ""}`}
-            style={{
-              transform: crashed ? "translateY(40px) rotate(90deg)" : undefined,
-              opacity: crashed ? 0.4 : 1,
-              transition: "transform 300ms ease-in, opacity 300ms ease-in",
-            }}
-          >
-            {"\u{1F680}"}
-          </span>
-        </div>
+        <Scene3DBase height={260} cameraPosition={[0, 2.6, 6.5]} fov={44}>
+          <CrashScene3D active={active} multiplier={multiplier} crashed={crashed} cashedOutAt={cashedOutAt} />
+        </Scene3DBase>
         <div
           className={`text-6xl font-black tabular-nums ${crashed ? "shake" : ""}`}
           style={{ color: crashed ? "var(--danger)" : active ? "var(--success)" : "var(--muted)" }}

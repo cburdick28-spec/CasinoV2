@@ -1,11 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
-import { CardRow } from "@/components/PlayingCard";
+import Scene3DBase from "@/components/three/Scene3DBase";
 import { useUser } from "@/lib/UserContext";
 import type { Card } from "@/lib/types";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const BlackjackScene3D = dynamic(() => import("@/components/three/BlackjackScene3D"), {
+  ssr: false,
+  loading: () => (
+    <div
+      className="w-full rounded-2xl border border-[var(--border)] flex items-center justify-center text-muted"
+      style={{ height: 320 }}
+    >
+      Setting up the table...
+    </div>
+  ),
+});
 
 interface HandView {
   cards: Card[];
@@ -104,11 +118,18 @@ export default function BlackjackPage() {
 
         {state && (
           <>
+            <Scene3DBase height={320} key={dealSeq}>
+              <BlackjackScene3D
+                dealerCards={state.dealer.length ? state.dealer : [null]}
+                hands={state.hands.map((h) => h.cards)}
+                activeHandIndex={state.active ? state.current : undefined}
+              />
+            </Scene3DBase>
+
             <div>
               <h3 className="text-sm text-muted mb-2">
                 Dealer {state.dealerValue !== null ? `(${state.dealerValue})` : ""}
               </h3>
-              <CardRow cards={state.dealer.length ? state.dealer : [null]} dealKey={`dealer-${dealSeq}`} />
             </div>
 
             <div className="flex flex-col gap-4">
@@ -122,7 +143,6 @@ export default function BlackjackPage() {
                     {h.natural && " • Blackjack!"}
                     {h.surrendered && " • Surrendered"}
                   </h3>
-                  <CardRow cards={h.cards} dealKey={`hand-${idx}-${dealSeq}`} />
                 </div>
               ))}
             </div>

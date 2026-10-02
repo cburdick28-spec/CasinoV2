@@ -1,11 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
-import { CardRow } from "@/components/PlayingCard";
+import Scene3DBase from "@/components/three/Scene3DBase";
 import { useUser } from "@/lib/UserContext";
 import type { Card } from "@/lib/types";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const WarScene3D = dynamic(() => import("@/components/three/WarScene3D"), {
+  ssr: false,
+  loading: () => (
+    <div
+      className="w-full rounded-2xl border border-[var(--border)] flex items-center justify-center text-muted"
+      style={{ height: 320 }}
+    >
+      Loading table...
+    </div>
+  ),
+});
 
 export default function WarPage() {
   const { user, refresh, pushToast, celebrate } = useUser();
@@ -13,6 +27,8 @@ export default function WarPage() {
   const [busy, setBusy] = useState(false);
   const [playerCard, setPlayerCard] = useState<Card | null>(null);
   const [dealerCard, setDealerCard] = useState<Card | null>(null);
+  const [warPlayerCard, setWarPlayerCard] = useState<Card | null>(null);
+  const [warDealerCard, setWarDealerCard] = useState<Card | null>(null);
   const [tied, setTied] = useState(false);
   const [pendingBet, setPendingBet] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
@@ -25,6 +41,8 @@ export default function WarPage() {
     setBusy(true);
     setMessage(null);
     setTied(false);
+    setWarPlayerCard(null);
+    setWarDealerCard(null);
     const res = await fetch("/api/games/war", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -89,26 +107,25 @@ export default function WarPage() {
     setBusy(false);
     setTied(false);
     if (!res.ok) return pushToast("lose", data.error);
-    setPlayerCard(data.playerCard);
-    setDealerCard(data.dealerCard);
-    setDealSeq((n) => n + 1);
+    // Keep the original tied cards in place and deal the war round's fresh
+    // cards further forward, so both pairs stay visible on the table.
+    setWarPlayerCard(data.playerCard);
+    setWarDealerCard(data.dealerCard);
     finish(data.result, data.payout, pendingBet * 2);
   }
 
   return (
     <GameShell title="Casino War" emoji={"\u{2694}\u{FE0F}"} subtitle="Highest card wins. Tie? Surrender for half back, or double down and go to war.">
       <div className={`panel p-8 flex flex-col items-center gap-6 ${shake ? "shake" : ""}`}>
-        <div className="flex flex-col sm:flex-row gap-8 items-center">
-          <div className="flex flex-col items-center gap-2">
-            <h3 className="text-sm text-muted">You</h3>
-            <CardRow cards={[playerCard]} dealKey={`player-${dealSeq}`} />
-          </div>
-          <div className="text-2xl font-bold text-muted">VS</div>
-          <div className="flex flex-col items-center gap-2">
-            <h3 className="text-sm text-muted">Dealer</h3>
-            <CardRow cards={[dealerCard]} dealKey={`dealer-${dealSeq}`} />
-          </div>
-        </div>
+        <Scene3DBase height={320} key={dealSeq}>
+          <WarScene3D
+            playerCard={playerCard}
+            dealerCard={dealerCard}
+            warPlayerCard={warPlayerCard}
+            warDealerCard={warDealerCard}
+            tied={tied}
+          />
+        </Scene3DBase>
 
         {message && <div className="font-bold text-lg value-pop">{message}</div>}
 

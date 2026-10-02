@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
 import { useUser } from "@/lib/UserContext";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const Scene3DBase = dynamic(() => import("@/components/three/Scene3DBase"), { ssr: false });
+const DiceTray3D = dynamic(() => import("@/components/three/Dice3D").then((m) => m.DiceTray3D), { ssr: false });
 
 interface CrapsState {
   phase: "come_out" | "point";
@@ -11,8 +16,6 @@ interface CrapsState {
   bet: number;
   oddsBet: number;
 }
-
-const DICE_FACES = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 
 export default function CrapsPage() {
   const { user, refresh, pushToast } = useUser();
@@ -36,13 +39,18 @@ export default function CrapsPage() {
       body: JSON.stringify({ action: "roll", bet: initialBet }),
     });
     const data = await res.json();
+    if (!res.ok) {
+      setTimeout(() => {
+        setRolling(false);
+        pushToast("lose", data.error);
+      }, 500);
+      return;
+    }
+    // Reveal the real dice values to the 3D tray right away so it tumbles
+    // with the true result already loaded, then settle after a brief delay.
+    setDice(data.dice);
     setTimeout(() => {
       setRolling(false);
-      if (!res.ok) {
-        pushToast("lose", data.error);
-        return;
-      }
-      setDice(data.dice);
       setState(data.state);
       setMessage(data.message);
       setOutcome(data.outcome);
@@ -68,18 +76,15 @@ export default function CrapsPage() {
   return (
     <GameShell title="Craps" emoji={"\u{1F3B2}"} subtitle="Classic pass-line craps. Back your point with an odds bet for a house-edge-free boost.">
       <div className="panel p-6 flex flex-col items-center gap-5">
-        <div className={`flex gap-4 text-7xl h-24 items-center ${outcome === "lose" ? "shake" : ""}`}>
+        <div className={`w-full ${outcome === "lose" ? "shake" : ""}`}>
           {dice ? (
-            <>
-              <span className={rolling ? "dice-tumble" : "value-pop"} style={{ animationDelay: "0ms" }}>
-                {DICE_FACES[dice[0]]}
-              </span>
-              <span className={rolling ? "dice-tumble" : "value-pop"} style={{ animationDelay: "80ms" }}>
-                {DICE_FACES[dice[1]]}
-              </span>
-            </>
+            <Scene3DBase height={260}>
+              <DiceTray3D values={dice} rolling={rolling} />
+            </Scene3DBase>
           ) : (
-            <span className="text-muted text-2xl">Roll to begin</span>
+            <div className="h-24 flex items-center justify-center">
+              <span className="text-muted text-2xl">Roll to begin</span>
+            </div>
           )}
         </div>
 

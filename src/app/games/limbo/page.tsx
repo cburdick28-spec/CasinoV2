@@ -1,10 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
+import Scene3DBase from "@/components/three/Scene3DBase";
 import { useUser } from "@/lib/UserContext";
 import { MAX_TARGET, MIN_TARGET } from "@/lib/games/limbo";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const LimboScene3D = dynamic(() => import("@/components/three/LimboScene3D"), {
+  ssr: false,
+  loading: () => <div className="w-full flex items-center justify-center text-muted" style={{ height: 380 }}>Loading gauge...</div>,
+});
 
 const PRESET_TARGETS = [1.5, 2, 5, 10, 50, 100];
 
@@ -68,6 +76,9 @@ export default function LimboPage() {
   return (
     <GameShell title="Limbo" emoji={"\u{1F4C9}"} subtitle="Set a target multiplier — clear it on the roll and you win, fall short and you lose.">
       <div className={`panel p-10 flex flex-col items-center gap-6 ${shake ? "shake" : ""}`}>
+        <Scene3DBase height={380} cameraPosition={[0, 0.6, 4.4]} fov={50}>
+          <LimboScene3D display={display} target={target} result={result} />
+        </Scene3DBase>
         <div
           className="text-6xl font-black tabular-nums"
           style={{

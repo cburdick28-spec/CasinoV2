@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
 import { useUser } from "@/lib/UserContext";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const Scene3DBase = dynamic(() => import("@/components/three/Scene3DBase"), { ssr: false });
+const DiceTray3D = dynamic(() => import("@/components/three/Dice3D").then((m) => m.DiceTray3D), { ssr: false });
 
 const DICE_FACES = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 
@@ -47,13 +52,19 @@ export default function SicBoPage() {
     });
     const data = await res.json();
 
+    if (!res.ok) {
+      setTimeout(() => {
+        setRolling(false);
+        pushToast("lose", data.error);
+      }, 700);
+      return;
+    }
+    // Load the real dice into the tray immediately so it tumbles with the
+    // true result already set, then settle after a brief delay.
+    setDice(data.dice);
+
     setTimeout(() => {
       setRolling(false);
-      if (!res.ok) {
-        pushToast("lose", data.error);
-        return;
-      }
-      setDice(data.dice);
       const net = data.payout - bet;
       if (net >= 0) {
         setMessage(`${choiceLabel(choice)} hit! +$${net.toLocaleString()}`);
@@ -72,15 +83,15 @@ export default function SicBoPage() {
   return (
     <GameShell title="Sic Bo" emoji={"\u{1F3B2}"} subtitle="Three dice, your call — big/small, a number, or chase a triple for a huge payout.">
       <div className={`panel p-8 flex flex-col items-center gap-6 ${shake ? "shake" : ""}`}>
-        <div className="flex gap-4 text-6xl h-20 items-center">
+        <div className="w-full">
           {dice ? (
-            dice.map((d, i) => (
-              <span key={i} className={rolling ? "dice-tumble" : "value-pop"} style={{ animationDelay: `${i * 80}ms` }}>
-                {DICE_FACES[d]}
-              </span>
-            ))
+            <Scene3DBase height={260}>
+              <DiceTray3D values={dice} rolling={rolling} />
+            </Scene3DBase>
           ) : (
-            <span className="text-muted text-xl">Roll to begin</span>
+            <div className="h-20 flex items-center justify-center">
+              <span className="text-muted text-xl">Roll to begin</span>
+            </div>
           )}
         </div>
 

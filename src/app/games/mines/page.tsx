@@ -1,9 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
+import Scene3DBase from "@/components/three/Scene3DBase";
 import { useUser } from "@/lib/UserContext";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const MinesScene3D = dynamic(() => import("@/components/three/MinesScene3D"), {
+  ssr: false,
+  loading: () => <div className="w-full flex items-center justify-center text-muted" style={{ height: 360 }}>Loading table...</div>,
+});
 
 const GRID_SIZE = 25;
 const MINE_OPTIONS = [1, 3, 5, 10, 15, 24];
@@ -112,8 +120,6 @@ export default function MinesPage() {
     refresh();
   }
 
-  const tiles = Array.from({ length: GRID_SIZE }, (_, i) => i);
-
   return (
     <GameShell title="Mines" emoji={"\u{1F4A3}"} subtitle="Reveal gems while dodging mines — cash out any time, the more you reveal the higher the multiplier.">
       <div className={`panel p-6 flex flex-col items-center gap-5 ${shake ? "shake" : ""}`}>
@@ -158,30 +164,17 @@ export default function MinesPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-5 gap-2 w-full max-w-md">
-          {tiles.map((t) => {
-            const isRevealed = state?.revealed.includes(t);
-            const isMine = revealedMines?.includes(t);
-            const isSafeAfterLoss = revealedMines && !isMine;
-            return (
-              <button
-                key={t}
-                disabled={!state || busy || isRevealed}
-                onClick={() => reveal(t)}
-                className="aspect-square rounded-xl border-2 flex items-center justify-center text-2xl transition-all disabled:cursor-default"
-                style={{
-                  borderColor: isMine ? "var(--danger)" : isRevealed ? "var(--gold)" : "var(--border)",
-                  background: isMine ? "rgba(255,84,112,0.15)" : isRevealed ? "rgba(255,213,74,0.12)" : "#12121f",
-                  opacity: isSafeAfterLoss ? 0.35 : 1,
-                }}
-              >
-                <span className={flashTile === t ? "value-pop" : ""}>
-                  {isMine ? "\u{1F4A3}" : isRevealed ? "\u{1F48E}" : ""}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <Scene3DBase height={360} cameraPosition={[0, 5.4, 5.8]} fov={45}>
+          <MinesScene3D
+            gridSize={GRID_SIZE}
+            cols={5}
+            revealed={state?.revealed ?? []}
+            mines={revealedMines}
+            flashTile={flashTile}
+            disabled={!state || busy}
+            onReveal={reveal}
+          />
+        </Scene3DBase>
       </div>
 
       <div className="panel p-5 text-sm text-muted">

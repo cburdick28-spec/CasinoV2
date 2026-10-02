@@ -1,9 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
+import Scene3DBase from "@/components/three/Scene3DBase";
 import { useUser } from "@/lib/UserContext";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const CoinScene3D = dynamic(() => import("@/components/three/CoinScene3D"), {
+  ssr: false,
+  loading: () => <div className="w-full flex items-center justify-center text-muted" style={{ height: 220 }}>Minting coin...</div>,
+});
 
 interface CoinState {
   bet: number;
@@ -84,15 +92,9 @@ export default function CoinFlipPage() {
   return (
     <GameShell title="Coin Flip" emoji={"\u{1FA99}"} subtitle="Call it right and keep the streak going — each win multiplies your pot by 1.95x. Cash out any time.">
       <div className="panel p-8 flex flex-col items-center gap-6">
-        <div className="coin-scene">
-          <div
-            className={`coin-3d ${flipping ? "coin-arcing" : ""}`}
-            style={{ transform: `rotateY(${rotation}deg)` }}
-          >
-            <div className="coin-face coin-face-heads">H</div>
-            <div className="coin-face coin-face-tails">T</div>
-          </div>
-        </div>
+        <Scene3DBase height={220} cameraPosition={[0, 0.3, 3.4]} fov={36}>
+          <CoinScene3D rotation={rotation} flipping={flipping} />
+        </Scene3DBase>
         {lastResult && !flipping && <div className="font-bold value-pop">Last flip: {lastResult}</div>}
 
         {state ? (

@@ -1,9 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
+import Scene3DBase from "@/components/three/Scene3DBase";
 import { useUser } from "@/lib/UserContext";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const PlinkoScene3D = dynamic(() => import("@/components/three/PlinkoScene3D"), {
+  ssr: false,
+  loading: () => <div className="w-full flex items-center justify-center text-muted" style={{ height: 320 }}>Setting up the board...</div>,
+});
 
 const ROWS = 12;
 const MAX_BALLS = 10;
@@ -93,32 +101,10 @@ export default function PlinkoPage() {
   return (
     <GameShell title="Plinko" emoji={"\u{1F3B3}"} subtitle="Drop one ball or many at once — where each lands sets its own multiplier.">
       <div className="panel p-6 flex flex-col items-center gap-4">
-        <div className="relative w-full max-w-lg" style={{ height: 260 }}>
-          {Array.from({ length: ROWS }).map((_, r) => (
-            <div key={r} className="absolute left-0 right-0 flex justify-center gap-6" style={{ top: `${(r / ROWS) * 85}%` }}>
-              {Array.from({ length: r + 2 }).map((_, c) => (
-                <span
-                  key={c}
-                  className={`w-1.5 h-1.5 rounded-full transition-all duration-150 ${
-                    liveBalls.some((b) => b.row === r) ? "bg-[var(--gold)] scale-150" : "bg-white/30"
-                  }`}
-                />
-              ))}
-            </div>
-          ))}
-          {liveBalls.map((b, i) => (
-            <div
-              key={i}
-              className="absolute w-4 h-4 rounded-full shadow-lg"
-              style={{
-                left: `calc(${b.x}% - 8px)`,
-                top: `${((b.row + 1) / (ROWS + 1)) * 85}%`,
-                background: b.color,
-                transition: "left 170ms cubic-bezier(0.5, 0, 0.5, 1.6), top 170ms cubic-bezier(0.3, 0.6, 0.4, 1)",
-                boxShadow: `0 0 10px ${b.color}`,
-              }}
-            />
-          ))}
+        <div className="w-full max-w-lg">
+          <Scene3DBase height={320} cameraPosition={[0, 0.4, 7.5]} fov={40}>
+            <PlinkoScene3D rows={ROWS} liveBalls={liveBalls} bucketCount={table.length} />
+          </Scene3DBase>
         </div>
 
         <div className="grid grid-cols-[repeat(13,minmax(0,1fr))] gap-1 w-full max-w-lg text-[10px] text-center">

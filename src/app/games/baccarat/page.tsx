@@ -1,11 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
-import { CardRow } from "@/components/PlayingCard";
+import Scene3DBase from "@/components/three/Scene3DBase";
 import { useUser } from "@/lib/UserContext";
 import type { Card } from "@/lib/types";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const BaccaratScene3D = dynamic(() => import("@/components/three/BaccaratScene3D"), {
+  ssr: false,
+  loading: () => (
+    <div
+      className="w-full rounded-2xl border border-[var(--border)] flex items-center justify-center text-muted"
+      style={{ height: 320 }}
+    >
+      Setting up the table...
+    </div>
+  ),
+});
 
 type Side = "player" | "banker" | "tie";
 
@@ -51,13 +65,12 @@ export default function BaccaratPage() {
       <div className="panel p-6 flex flex-col gap-6">
         {round && (
           <>
-            <div>
-              <h3 className="text-sm text-muted mb-2">Player ({round.playerTotal})</h3>
-              <CardRow cards={round.player} dealKey={`player-${dealSeq}`} />
-            </div>
-            <div>
-              <h3 className="text-sm text-muted mb-2">Banker ({round.bankerTotal})</h3>
-              <CardRow cards={round.banker} dealKey={`banker-${dealSeq}`} />
+            <Scene3DBase height={320} key={dealSeq}>
+              <BaccaratScene3D playerCards={round.player} bankerCards={round.banker} />
+            </Scene3DBase>
+            <div className="flex gap-6">
+              <h3 className="text-sm text-muted">Player ({round.playerTotal})</h3>
+              <h3 className="text-sm text-muted">Banker ({round.bankerTotal})</h3>
             </div>
             <div className={`font-bold animate-in ${round.payout > bet ? "text-success" : round.payout === bet ? "text-muted" : "text-danger"}`}>
               {round.winner.toUpperCase()} wins &mdash; {round.payout > bet ? `+$${(round.payout - bet).toLocaleString()}` : round.payout === bet ? "Push" : `-$${bet.toLocaleString()}`}

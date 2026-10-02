@@ -1,9 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
+import Scene3DBase from "@/components/three/Scene3DBase";
 import { useUser } from "@/lib/UserContext";
+import type { Card, Suit } from "@/lib/types";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const HigherLowerScene3D = dynamic(() => import("@/components/three/HigherLowerScene3D"), {
+  ssr: false,
+  loading: () => (
+    <div
+      className="w-full rounded-2xl border border-[var(--border)] flex items-center justify-center text-muted"
+      style={{ height: 320 }}
+    >
+      Loading table...
+    </div>
+  ),
+});
 
 interface HLState {
   bet: number;
@@ -17,6 +33,15 @@ function label(n: number) {
   return FACE[n] ?? String(n);
 }
 
+// The server only tracks each card's rank (1-13), not a suit, so for the 3D
+// scene we derive a stable, purely decorative suit from the rank value.
+const SUITS: Suit[] = ["S", "H", "D", "C"];
+function toCard(n: number | null): Card | null {
+  if (n === null) return null;
+  const rank = FACE[n] ?? String(n);
+  return { rank: rank as Card["rank"], suit: SUITS[n % SUITS.length] };
+}
+
 export default function HigherLowerPage() {
   const { user, refresh, pushToast, celebrate } = useUser();
   const [bet, setBet] = useState(10);
@@ -24,10 +49,15 @@ export default function HigherLowerPage() {
   const [busy, setBusy] = useState(false);
   const [flip, setFlip] = useState(0);
   const [wrong, setWrong] = useState(false);
+  // The card shown on the left of the 3D table (the one being guessed
+  // against) and the freshly revealed card dealt in beside it.
+  const [prevCard, setPrevCard] = useState<number | null>(null);
+  const [revealCard, setRevealCard] = useState<number | null>(null);
 
   if (!user) return null;
 
   async function guess(direction: "higher" | "lower") {
+    const beforeCard = state?.card ?? null;
     setBusy(true);
     setWrong(false);
     const res = await fetch("/api/games/higherlower", {
@@ -39,6 +69,8 @@ export default function HigherLowerPage() {
     setBusy(false);
     setFlip((n) => n + 1);
     if (!res.ok) return pushToast("lose", data.error);
+    setPrevCard(beforeCard);
+    setRevealCard(data.nextCard ?? null);
     if (data.push) {
       setState(data.state);
       pushToast("info", "Push — cards matched.");
@@ -67,6 +99,8 @@ export default function HigherLowerPage() {
     if (!res.ok) return pushToast("lose", data.error);
     pushToast("win", `Cashed out $${data.payout.toLocaleString()}`);
     setState(null);
+    setPrevCard(null);
+    setRevealCard(null);
     refresh();
   }
 
@@ -75,9 +109,9 @@ export default function HigherLowerPage() {
   return (
     <GameShell title="Higher / Lower" emoji={"\u{1F53C}"} subtitle="Guess whether the next card is higher or lower. True-odds payouts, 5% house edge, cash out any time.">
       <div className={`panel p-8 flex flex-col items-center gap-6 ${wrong ? "shake" : ""}`}>
-        <div key={flip} className="card-face text-3xl card-deal">
-          {currentCard ? label(currentCard) : "?"}
-        </div>
+        <Scene3DBase height={320} key={flip}>
+          <HigherLowerScene3D currentCard={toCard(prevCard ?? currentCard)} nextCard={toCard(revealCard)} />
+        </Scene3DBase>
 
         {state && (
           <div className="text-lg">

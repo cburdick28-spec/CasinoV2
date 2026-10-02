@@ -1,9 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
+import Scene3DBase from "@/components/three/Scene3DBase";
 import { useUser } from "@/lib/UserContext";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const HorseRaceScene3D = dynamic(() => import("@/components/three/HorseRaceScene3D"), {
+  ssr: false,
+  loading: () => <div className="w-full flex items-center justify-center text-muted" style={{ height: 320 }}>Loading track...</div>,
+});
 
 interface Horse {
   name: string;
@@ -81,35 +89,9 @@ export default function HorseRacingPage() {
           ))}
         </div>
 
-        <div className="flex flex-col gap-3 bg-[#0d2d0d] rounded-xl p-4">
-          {horses.map((h, i) => {
-            const pos = positions[i] ?? 0;
-            const pct = Math.min((pos / TRACK_LENGTH) * 100, 100);
-            const isLeading = racing && pos === Math.max(...positions);
-            return (
-              <div key={h.name} className="flex items-center gap-2">
-                <span className="w-28 text-xs" style={{ color: i === selected ? "var(--gold)" : "white" }}>
-                  {h.emoji} {h.name}
-                </span>
-                <div className="flex-1 bg-black/30 rounded h-5 relative overflow-visible">
-                  <div
-                    className="h-5 rounded transition-all duration-100 ease-linear relative"
-                    style={{ width: `${Math.max(pct, 4)}%`, background: i === selected ? "var(--gold)" : "#4a9a4a" }}
-                  >
-                    {racing && (
-                      <span
-                        className={`absolute -right-1 -top-2 text-base ${isLeading ? "gallop" : ""}`}
-                        style={{ animationDuration: isLeading ? "0.25s" : "0.4s" }}
-                      >
-                        {h.emoji}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <Scene3DBase height={320} cameraPosition={[0, 4.2, 5.4]} fov={48}>
+          <HorseRaceScene3D horses={horses} positions={positions} trackLength={TRACK_LENGTH} selected={selected} />
+        </Scene3DBase>
 
         {result && (
           <div className={`mt-4 font-bold animate-in ${result.won ? "text-success" : "text-danger"}`}>

@@ -1,10 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
+import Scene3DBase from "@/components/three/Scene3DBase";
 import { useUser } from "@/lib/UserContext";
 import type { Card } from "@/lib/types";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const VideoPokerScene3D = dynamic(() => import("@/components/three/VideoPokerScene3D"), {
+  ssr: false,
+  loading: () => (
+    <div
+      className="w-full rounded-2xl border border-[var(--border)] flex items-center justify-center text-muted"
+      style={{ height: 320 }}
+    >
+      Loading table...
+    </div>
+  ),
+});
 
 const SUIT_SYMBOL: Record<string, string> = { S: "♠", H: "♥", D: "♦", C: "♣" };
 
@@ -88,33 +103,23 @@ export default function VideoPokerPage() {
   return (
     <GameShell title="Video Poker" emoji={"\u{1F0CF}"} subtitle="Jacks or Better, 9/6 paytable. Hold the cards you want, draw the rest once.">
       <div className="panel p-6 flex flex-col items-center gap-6">
-        <div key={dealSeq} className="flex gap-3 flex-wrap justify-center">
+        <Scene3DBase height={320} key={dealSeq}>
+          <VideoPokerScene3D hand={hand ?? Array(5).fill(null)} holds={holds} />
+        </Scene3DBase>
+
+        <div className="flex gap-3 flex-wrap justify-center">
           {(hand ?? Array(5).fill(null)).map((c, i) => {
-            const red = c && (c.suit === "H" || c.suit === "D");
             const held = holds[i];
             return (
               <button
                 key={i}
                 onClick={() => toggleHold(i)}
                 disabled={stage !== "held"}
-                className="relative flex flex-col items-center gap-1"
-                style={{ animationDelay: `${i * 80}ms` }}
+                className="relative flex flex-col items-center gap-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-white/5 disabled:opacity-60"
               >
-                {c ? (
-                  <div
-                    className={`card-face card-deal ${red ? "card-red" : ""}`}
-                    style={{
-                      animationDelay: `${i * 80}ms`,
-                      outline: held ? "3px solid var(--gold)" : "none",
-                      outlineOffset: "2px",
-                    }}
-                  >
-                    <div className="text-lg leading-none">{c.rank}</div>
-                    <div className="text-3xl leading-none mt-1">{SUIT_SYMBOL[c.suit]}</div>
-                  </div>
-                ) : (
-                  <div className="card-back" />
-                )}
+                <span className="text-xs text-muted">
+                  {c ? `${c.rank}${SUIT_SYMBOL[c.suit]}` : `Card ${i + 1}`}
+                </span>
                 <span className={`text-[10px] font-bold ${held ? "text-[var(--gold)]" : "text-transparent"}`}>HELD</span>
               </button>
             );

@@ -1,11 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
-import { CardRow } from "@/components/PlayingCard";
+import Scene3DBase from "@/components/three/Scene3DBase";
 import { useUser } from "@/lib/UserContext";
 import type { Card } from "@/lib/types";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const PokerScene3D = dynamic(() => import("@/components/three/PokerScene3D"), {
+  ssr: false,
+  loading: () => (
+    <div
+      className="w-full rounded-2xl border border-[var(--border)] flex items-center justify-center text-muted"
+      style={{ height: 320 }}
+    >
+      Setting up the table...
+    </div>
+  ),
+});
 
 interface StateView {
   player: Card[];
@@ -94,20 +108,10 @@ export default function PokerPage() {
         {state && (
           <>
             <div className="text-sm text-muted">{STAGE_LABEL[state.stage]} &middot; Pot ${state.pot.toLocaleString()}</div>
-            <div>
-              <h3 className="text-sm text-muted mb-2">Your Hand</h3>
-              <CardRow cards={state.player} dealKey={`player-${dealSeq}`} />
-            </div>
-            {state.community.length > 0 && (
-              <div>
-                <h3 className="text-sm text-muted mb-2">Community Cards</h3>
-                <CardRow cards={state.community} />
-              </div>
-            )}
-            <div>
-              <h3 className="text-sm text-muted mb-2">Dealer</h3>
-              <CardRow cards={state.dealer} dealKey={`dealer-${dealSeq}`} />
-            </div>
+
+            <Scene3DBase height={320} key={dealSeq}>
+              <PokerScene3D playerCards={state.player} dealerCards={state.dealer} community={state.community} />
+            </Scene3DBase>
 
             {result && (
               <div className={`font-bold animate-in ${result.outcome === "win" ? "text-success" : result.outcome === "lose" ? "text-danger" : "text-muted"}`}>

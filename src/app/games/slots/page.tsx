@@ -1,10 +1,17 @@
 "use client";
 
 import { useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import BetInput from "@/components/BetInput";
-import SlotReel from "@/components/SlotReel";
+import Scene3DBase from "@/components/three/Scene3DBase";
 import { useUser } from "@/lib/UserContext";
+
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const SlotsScene3D = dynamic(() => import("@/components/three/SlotsScene3D"), {
+  ssr: false,
+  loading: () => <div className="w-full flex items-center justify-center text-muted" style={{ height: 340 }}>Loading reels...</div>,
+});
 
 const SYMBOLS = ["\u{1F352}", "\u{1F34B}", "\u{1F349}", "⭐", "\u{1F48E}", "7️⃣"];
 const PAYTABLE = [
@@ -82,19 +89,15 @@ export default function SlotsPage() {
   return (
     <GameShell title="Slots" emoji={"\u{1F3B0}"} subtitle="Match 3 symbols for the full payout, or 2 for a smaller win.">
       <div className="panel p-8 flex flex-col items-center gap-6">
-        <div className="flex gap-4">
-          {finalReels.map((s, i) => (
-            <SlotReel
-              key={i}
-              symbols={SYMBOLS}
-              finalSymbol={s}
-              spinToken={spinToken}
-              delayMs={REEL_TIMING[i].delayMs}
-              durationMs={REEL_TIMING[i].durationMs}
-              onSettled={onReelSettled}
-            />
-          ))}
-        </div>
+        <Scene3DBase height={300} cameraPosition={[0, 0.3, 4.4]} fov={38}>
+          <SlotsScene3D
+            symbols={SYMBOLS}
+            finalReels={finalReels}
+            spinToken={spinToken}
+            reelTiming={REEL_TIMING}
+            onReelSettled={onReelSettled}
+          />
+        </Scene3DBase>
         {message && <div className="text-xl font-bold animate-in">{message}</div>}
         <BetInput bet={bet} setBet={setBet} max={user.money} disabled={spinning} />
         <button className="btn btn-gold text-lg px-8" onClick={spin} disabled={spinning || bet > user.money}>

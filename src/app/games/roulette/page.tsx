@@ -1,15 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
+import dynamic from "next/dynamic";
 import GameShell from "@/components/GameShell";
 import { useUser } from "@/lib/UserContext";
 
-// Real European wheel pocket order, used to compute the wheel's resting rotation.
-const WHEEL_ORDER = [
-  0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29,
-  7, 28, 12, 35, 3, 26,
-];
-const POCKET_ANGLE = 360 / WHEEL_ORDER.length;
+// Three.js touches the WebGL canvas directly, so it can only run in the browser.
+const Scene3DBase = dynamic(() => import("@/components/three/Scene3DBase"), { ssr: false });
+const RouletteScene3D = dynamic(() => import("@/components/three/RouletteScene3D"), { ssr: false });
 
 type BetType =
   | "straight"
@@ -67,8 +65,6 @@ export default function RoulettePage() {
   const [spinning, setSpinning] = useState(false);
   const [spinResult, setSpinResult] = useState<number | null>(null);
   const [results, setResults] = useState<BetResult[] | null>(null);
-  const [wheelAngle, setWheelAngle] = useState(0);
-  const spinCountRef = useRef(0);
 
   if (!user) return null;
 
@@ -96,23 +92,21 @@ export default function RoulettePage() {
     });
     const data = await res.json();
 
-    if (res.ok) {
-      // Rotate so the winning pocket lands under the top pointer, plus several
-      // full turns for a satisfying decelerating spin.
-      const pocketIndex = WHEEL_ORDER.indexOf(data.spin);
-      const targetPocketAngle = 360 - pocketIndex * POCKET_ANGLE;
-      spinCountRef.current += 1;
-      const fullTurns = 5 * 360 * spinCountRef.current;
-      setWheelAngle(fullTurns + targetPocketAngle);
+    if (!res.ok) {
+      setTimeout(() => {
+        setSpinning(false);
+        pushToast("lose", data.error);
+      }, 2600);
+      return;
     }
+
+    // Reveal the real winning number to the 3D wheel right away so it can
+    // tween its rotation to the true result; `spinning` stays true until the
+    // tween has had time to finish, matching the old CSS transition timing.
+    setSpinResult(data.spin);
 
     setTimeout(() => {
       setSpinning(false);
-      if (!res.ok) {
-        pushToast("lose", data.error);
-        return;
-      }
-      setSpinResult(data.spin);
       setResults(data.results);
       pushToast(data.net >= 0 ? "win" : "lose", `${data.net >= 0 ? "+" : ""}$${data.net.toLocaleString()}`);
       setSlip([]);
@@ -123,62 +117,9 @@ export default function RoulettePage() {
   return (
     <GameShell title="Roulette" emoji={"\u{1F3A1}"} subtitle="Build a bet slip across the board, then spin once.">
       <div className="panel p-6 flex flex-col items-center gap-4">
-        <div className="relative w-[22rem] h-[22rem] max-w-full">
-          {/* Pointer */}
-          <div
-            className="absolute left-1/2 -translate-x-1/2 -top-1 z-10"
-            style={{
-              width: 0,
-              height: 0,
-              borderLeft: "12px solid transparent",
-              borderRight: "12px solid transparent",
-              borderTop: "20px solid var(--gold)",
-              filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.5))",
-            }}
-          />
-          <div
-            className={`w-full h-full rounded-full border-4 relative overflow-hidden ${spinning ? "glow" : ""}`}
-            style={{
-              borderColor: "var(--gold)",
-              transform: `rotate(${wheelAngle}deg)`,
-              transition: spinning ? "transform 2.5s cubic-bezier(0.12, 0.7, 0.15, 1)" : "none",
-              background: `conic-gradient(${WHEEL_ORDER.map((n, i) => {
-                const color = numColor(n) === "red" ? "#c1273a" : numColor(n) === "green" ? "#1f8f5f" : "#141420";
-                const from = (i / WHEEL_ORDER.length) * 360;
-                const to = ((i + 1) / WHEEL_ORDER.length) * 360;
-                return `${color} ${from}deg ${to}deg`;
-              }).join(", ")})`,
-            }}
-          >
-            {WHEEL_ORDER.map((n, i) => {
-              const angle = (i / WHEEL_ORDER.length) * 360 + POCKET_ANGLE / 2;
-              return (
-                <div
-                  key={n}
-                  className="absolute left-1/2 top-1/2 w-0 h-0"
-                  style={{ transform: `rotate(${angle}deg) translateY(-158px)` }}
-                >
-                  <span
-                    className="absolute text-[11px] font-bold text-white/90"
-                    style={{ transform: `translate(-50%, -50%) rotate(${-angle}deg)` }}
-                  >
-                    {n}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          <div
-            className="absolute inset-0 m-auto w-24 h-24 rounded-full flex items-center justify-center text-3xl font-extrabold"
-            style={{
-              background: "#0d0d1a",
-              border: "3px solid var(--gold)",
-              color: spinResult === null ? "var(--muted)" : numColor(spinResult) === "red" ? "#ff5470" : numColor(spinResult) === "green" ? "#34d399" : "white",
-            }}
-          >
-            {spinning ? "\u{1F3A1}" : spinResult ?? "?"}
-          </div>
-        </div>
+        <Scene3DBase height={340}>
+          <RouletteScene3D spinning={spinning} winningNumber={spinResult} />
+        </Scene3DBase>
         {spinResult !== null && !spinning && (
           <div className="font-bold text-lg capitalize value-pop">{spinResult} &mdash; {numColor(spinResult)}</div>
         )}
