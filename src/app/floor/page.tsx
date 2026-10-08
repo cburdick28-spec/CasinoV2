@@ -1,25 +1,32 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import GameShell from "@/components/GameShell";
+import Link from "next/link";
 
-// Three.js touches the WebGL canvas directly, so it can only run in the browser.
-const CasinoFloor3D = dynamic(() => import("@/components/CasinoFloor3D"), {
+// Three.js touches WebGL directly, so the walk only runs in the browser.
+// This loading placeholder sits outside any Canvas, so a div is fine here.
+const CasinoWalk = dynamic(() => import("@/components/walk/CasinoWalk"), {
   ssr: false,
   loading: () => (
     <div
-      className="w-full rounded-[18px] border border-[var(--border)] flex items-center justify-center text-muted"
-      style={{ height: "70vh", minHeight: 420 }}
+      className="flex w-full items-center justify-center text-muted"
+      style={{ height: "calc(100vh - 140px)", minHeight: 520, borderRadius: 18, background: "#1a0f1c", border: "1px solid var(--border)" }}
     >
-      Building the floor...
+      Unlocking the doors...
     </div>
   ),
 });
 
 export default function FloorPage() {
   return (
-    <GameShell title="3D Casino Floor" emoji={"\u{1F3DB}\u{FE0F}"} subtitle="Walk the floor in 3D and click a podium to jump into any game.">
-      <CasinoFloor3D />
-    </GameShell>
+    <div className="mx-auto w-full max-w-[1500px] px-3 py-2">
+      <div className="mb-2 flex items-center justify-between px-1">
+        <h1 className="text-lg font-extrabold gold-text">Walk the Casino</h1>
+        <Link href="/" className="text-sm text-muted hover:text-foreground">
+          &larr; Back to the lobby
+        </Link>
+      </div>
+      <CasinoWalk />
+    </div>
   );
 }
