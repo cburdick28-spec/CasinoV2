@@ -5,6 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import { EYE_HEIGHT, roomAt, stationBySlug } from "./world";
 import { IN_WORLD_GAMES, getFocus, leaveFocus } from "./inworld";
+import { stepBet } from "./slotPlay";
 import { moveCircle, nearestStation, nearestValidPosition } from "./collision";
 import { getWalkState, patchWalkState } from "./state";
 
@@ -142,6 +143,17 @@ export default function PlayerController({ onInteract }: { onInteract: (slug: st
         // Playing a machine in the world: Enter opens the full game page, Esc or any walk key steps away.
         if (e.code === "Enter" && !e.repeat) {
           onInteractRef.current(focused, true);
+          return;
+        }
+        // Bet up / down, like the buttons on a real machine.
+        if (e.code === "ArrowUp" || e.code === "Equal" || e.code === "NumpadAdd") {
+          e.preventDefault();
+          stepBet(1);
+          return;
+        }
+        if (e.code === "ArrowDown" || e.code === "Minus" || e.code === "NumpadSubtract") {
+          e.preventDefault();
+          stepBet(-1);
           return;
         }
         if (e.code === "Escape" || MOVE_KEYS[e.code]) leaveFocus();

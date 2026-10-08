@@ -14,7 +14,7 @@ register(
 import type { SlotMachineState } from "./slotMachines";
 const {
   FACE_STEP, FACE_SYMBOLS, STOP_TIMES, TAU, SETTLE_HOLD, createSlotMachine, evaluate, requestSpin, rollOutcome,
-  updateSlotMachine, reelAngleAt,
+  updateSlotMachine, reelAngleAt, symbolFromServer,
 } = await import("./slotMachines");
 
 let fails = 0;
@@ -32,8 +32,9 @@ const mk = (seed: number) => () => ((seed = (seed * 1664525 + 1013904223) >>> 0)
     const l = rollOutcome(false, rng); ok(!l.win, "unforced roll must lose"); losses += l.win ? 0 : 1;
   }
   console.log(`rolls: ${wins} forced wins, ${losses} clean losses`);
-  ok(evaluate(["SEVEN", "WILD", "SEVEN"]).win, "wild substitutes");
-  ok(!evaluate(["SEVEN", "WILD", "BAR"]).win, "wild does not fix a mismatch");
+  ok(evaluate(["SEVEN", "SEVEN", "SEVEN"]).win, "triple wins");
+  ok(evaluate(["CHERRY", "CHERRY", "LEMON"]).win && evaluate(["LEMON", "CHERRY", "CHERRY"]).win, "adjacent pair wins (server rule)");
+  ok(!evaluate(["CHERRY", "LEMON", "CHERRY"]).win, "split pair loses (server rule)");
 }
 
 // 2. Simulate a spin at various frame rates; everything must be identical and exact.
@@ -75,6 +76,23 @@ for (const fps of [15, 30, 60, 144, 240, "jitter"] as const) {
     const frame = fps === "jitter" ? 0.13 : 1 / fps;
     stopSeen.forEach((s, i) => ok(s !== null && s >= STOP_TIMES[i] - 1e-9 && s <= STOP_TIMES[i] + frame + 1e-9, `fps ${fps}: reel ${i} stopped at ${s} (want ${STOP_TIMES[i]})`));
   }
+}
+
+// 2b. A real round: the server's answer decides what the reels aim at, even if the cheat flags are set.
+{
+  const rng = mk(21); const m = createSlotMachine("t", rng);
+  m.isRigged = true; m.upcomingWin = true;
+  const out = { reels: ["\u{1F34B}", "\u2B50", "7\u{FE0F}\u20E3"], won: false, payout: 0, jackpotWon: 0 };
+  requestSpin(m, rng, out);
+  ok(m.result!.source === "server" && !m.result!.win, "server outcome overrides rigging");
+  ok(m.result!.symbols.join() === "LEMON,STAR,SEVEN", `server symbols mapped: ${m.result!.symbols}`);
+  ok(symbolFromServer("7\u20E3") === "SEVEN" && symbolFromServer("\u{1F48E}") === "DIAMOND", "emoji mapping");
+  for (let i = 0; i < 40; i++) updateSlotMachine(m, 0.1);
+  m.reels.forEach((r, i) => ok(Math.abs(((r.angle % TAU) + TAU) % TAU - m.result!.faces[i] * FACE_STEP) < 1e-9, "server round lands on its faces"));
+  const win = { reels: ["\u{1F352}", "\u{1F352}", "\u{1F34B}"], won: true, payout: 30, jackpotWon: 0 };
+  for (let i = 0; i < 20; i++) updateSlotMachine(m, 1);
+  requestSpin(m, rng, win);
+  ok(m.result!.win && m.result!.payout === 30, "server win + payout carried");
 }
 
 // 3. Pure function of time: sampling at different rates gives the same value at a shared instant.

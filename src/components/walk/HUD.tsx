@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { useFocus, isInWorldGame } from "./inworld";
+import { setBetMax, stepBet, useSlotPlay } from "./slotPlay";
 import { GAMES } from "@/lib/gameList";
 import { useUser } from "@/lib/UserContext";
 import Minimap from "./Minimap";
@@ -236,6 +237,9 @@ export default function HUD({
   const focus = useFocus();
   const inWorld = isInWorldGame(game?.slug);
   const framed = inWorld && focus === game?.slug;
+  const bet = useSlotPlay((p) => p.bet);
+  const busy = useSlotPlay((p) => p.busy);
+  const slotMsg = useSlotPlay((p) => p.message);
   const showHelp = pinned || !moved;
   const showStart = !touch && !engaged && !moved && !pinned;
   const showResume = !touch && !engaged && moved && !pinned;
@@ -351,27 +355,51 @@ export default function HUD({
 
       {/* interaction prompt */}
       {game && (
-        <div className="absolute left-1/2 flex flex-col items-center gap-2" style={{ top: framed ? (touch ? "58%" : "90%") : touch ? "40%" : "62%", transform: "translateX(-50%)", zIndex: 20, whiteSpace: "nowrap" }}>
-          <div style={{ ...CARD, borderRadius: 999, padding: "9px 18px", display: touch ? "none" : "flex", alignItems: "center", gap: 10, border: `1px solid ${GOLD}` }}>
+        <div className="absolute left-1/2 flex flex-col items-center gap-2" style={{ ...(framed ? { bottom: 14 } : { top: touch ? "40%" : "62%" }), transform: "translateX(-50%)", zIndex: 20, whiteSpace: "nowrap" }}>
+          <div style={{ ...CARD, borderRadius: 999, padding: "9px 18px", display: touch && !framed ? "none" : "flex", alignItems: "center", gap: 10, border: `1px solid ${GOLD}` }}>
             <span style={{ fontSize: 22 }}>{game.emoji}</span>
             {framed ? (
-              touch ? (
-                <span>Walk away to leave</span>
-              ) : (
-                <>
-                  <Key big>E</Key>
-                  <span>spin again</span>
-                  <Key big>Enter</Key>
-                  <span>full game</span>
-                  <span style={{ opacity: 0.75 }}>· move to leave</span>
-                </>
-              )
+              <div className="flex flex-col items-center gap-1.5" style={{ pointerEvents: "auto" }}>
+                {slotMsg && (
+                  <div
+                    className="font-extrabold"
+                    style={{ fontSize: 20, color: slotMsg.kind === "win" ? "#7dffa6" : slotMsg.kind === "lose" ? "#ff8f8f" : GOLD, textShadow: "0 1px 8px rgba(0,0,0,0.85)" }}
+                  >
+                    {slotMsg.text}
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <span style={{ opacity: 0.8 }}>Bet</span>
+                  <button type="button" disabled={busy} onClick={() => stepBet(-1)} className="font-extrabold" style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(255,255,255,0.12)", opacity: busy ? 0.4 : 1 }} aria-label="Lower bet">
+                    -
+                  </button>
+                  <b style={{ color: GOLD, minWidth: 64, textAlign: "center", fontSize: 18 }}>${bet.toLocaleString()}</b>
+                  <button type="button" disabled={busy} onClick={() => stepBet(1)} className="font-extrabold" style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(255,255,255,0.12)", opacity: busy ? 0.4 : 1 }} aria-label="Raise bet">
+                    +
+                  </button>
+                  <button type="button" disabled={busy} onClick={() => setBetMax()} className="font-bold" style={{ padding: "4px 10px", borderRadius: 8, fontSize: 12, background: "rgba(255,255,255,0.12)", opacity: busy ? 0.4 : 1 }}>
+                    Max
+                  </button>
+                  {!touch && (
+                    <>
+                      <span style={{ opacity: 0.5 }}>|</span>
+                      <Key big>E</Key>
+                      <span>{busy ? "spinning..." : "spin"}</span>
+                    </>
+                  )}
+                </div>
+                {!touch && (
+                  <div style={{ fontSize: 12, opacity: 0.7 }}>
+                    Up/Down change bet · Enter full game · move to leave
+                  </div>
+                )}
+              </div>
             ) : (
               <>
                 {!touch && <span>Press</span>}
                 {!touch && <Key big>E</Key>}
                 <span>
-                  {touch ? (inWorld ? "Spin" : "Play") : inWorld ? "to spin" : "to play"} <b style={{ color: GOLD }}>{game.name}</b>
+                  {touch ? (inWorld ? "Sit at" : "Play") : inWorld ? "to sit down" : "to play"} <b style={{ color: GOLD }}>{game.name}</b>
                 </span>
               </>
             )}
@@ -380,6 +408,7 @@ export default function HUD({
             <button
               type="button"
               onClick={() => onInteract(game.slug)}
+              disabled={framed && busy}
               className="font-extrabold"
               style={{
                 pointerEvents: "auto",
@@ -391,7 +420,7 @@ export default function HUD({
                 boxShadow: "0 5px 0 #b8860b, 0 8px 18px rgba(0,0,0,0.5)",
               }}
             >
-              {inWorld ? (framed ? "Spin again" : `Spin ${game.name}`) : `Play ${game.name}`}
+              {inWorld ? (framed ? (busy ? "Spinning..." : `Spin $${bet.toLocaleString()}`) : `Sit at ${game.name}`) : `Play ${game.name}`}
             </button>
           )}
           {touch && framed && (

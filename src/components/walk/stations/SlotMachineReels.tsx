@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { AdditiveBlending, DoubleSide, type Group, type Mesh, type MeshBasicMaterial } from "three";
 import { C, Kit, KitMeshes, kitCache } from "./kit";
+import { notifySlotSettled } from "../slotPlay";
 import { FACE_COUNT, FACE_STEP, FACE_SYMBOLS, getSlotMachine, requestSpin, setRigged, setUpcomingWin, updateSlotMachine, type SymbolId } from "../slotMachines";
 
 const P = Math.PI;
@@ -22,23 +23,29 @@ function drawSymbol(k: Kit, sym: SymbolId) {
     case "SEVEN":
       seven(k, true, 0, 0, 0.022, 0.95, "#e0483b");
       break;
-    case "BAR":
-      k.box(0.13, 0.085, 0.012, "#2a1a2e", [0, 0, 0.02], { r: 0.006 });
-      for (let i = -1; i <= 1; i++) k.box(0.1, 0.017, 0.012, C.gold, [0, i * 0.026, 0.028], { ...lit, r: 0.004 });
-      break;
     case "CHERRY":
       k.sph(0.03, "#e0283b", [-0.027, -0.014, 0.024], { seg: 10, scale: [1, 1, 0.55] });
       k.sph(0.03, "#e0283b", [0.027, -0.014, 0.024], { seg: 10, scale: [1, 1, 0.55] });
       k.box(0.008, 0.055, 0.01, C.green, [-0.012, 0.03, 0.022], { rot: [0, 0, 0.35] });
       k.box(0.008, 0.055, 0.01, C.green, [0.012, 0.03, 0.022], { rot: [0, 0, -0.35] });
       break;
+    case "LEMON":
+      k.sph(0.04, "#ffe03a", [0, 0, 0.024], { seg: 12, scale: [1.5, 1, 0.5] });
+      k.sph(0.012, "#ffe03a", [0.062, 0.004, 0.024], { seg: 6, scale: [1, 0.8, 0.5] });
+      k.box(0.03, 0.012, 0.008, C.green, [-0.012, 0.042, 0.03], { rot: [0, 0, 0.5] });
+      break;
+    case "MELON":
+      k.sph(0.05, "#2f9e4a", [0, -0.012, 0.02], { seg: 14, scale: [1.5, 1, 0.4] });
+      k.sph(0.043, "#ff4a5e", [0, -0.012, 0.03], { seg: 14, scale: [1.5, 0.9, 0.4] });
+      for (const [x, y] of [[-0.025, -0.01], [0.0, 0.0], [0.025, -0.01], [-0.012, -0.03], [0.014, -0.03]]) k.box(0.008, 0.014, 0.008, "#2a1a2e", [x, y, 0.04], { rot: [0, 0, 0.3] });
+      break;
+    case "STAR":
+      k.box(0.075, 0.075, 0.012, "#ffcf3a", [0, 0, 0.022], { ...lit, i: 1.3, r: 0.004 });
+      k.box(0.075, 0.075, 0.012, "#ffe27a", [0, 0, 0.03], { ...lit, i: 1.4, rot: [0, 0, P / 4], r: 0.004 });
+      break;
     case "DIAMOND":
       k.box(0.08, 0.08, 0.012, C.cyan, [0, 0, 0.022], { ...lit, i: 1.3, rot: [0, 0, P / 4], r: 0.004 });
       k.box(0.045, 0.045, 0.012, "#e8fbff", [0, 0, 0.03], { ...lit, i: 1.4, rot: [0, 0, P / 4], r: 0.004 });
-      break;
-    case "WILD":
-      k.box(0.14, 0.1, 0.012, "#7a3fe0", [0, 0, 0.018], { r: 0.006 });
-      for (let i = 0; i < 3; i++) k.box(0.1, 0.02, 0.012, C.lemon, [0, 0, 0.028], { ...lit, i: 1.5, rot: [0, 0, (i * P) / 3], r: 0.004 });
       break;
   }
 }
@@ -72,6 +79,7 @@ const REEL_X = [-0.205, 0, 0.205] as const;
  */
 export function SlotMachineReels({ machineId }: { machineId: string }) {
   const reelsRef = useRef<Group>(null);
+  const notified = useRef(0);
   const leverRef = useRef<Group>(null);
   const flashMesh = useRef<Mesh>(null);
   const flashMat = useRef<MeshBasicMaterial>(null);
@@ -101,6 +109,11 @@ export function SlotMachineReels({ machineId }: { machineId: string }) {
     const m = getSlotMachine(machineId);
     if (!m) return;
     updateSlotMachine(m, delta);
+    // Tell the HUD side once per round, the first frame the machine is SETTLED.
+    if (m.phase === "SETTLED" && m.result && notified.current !== m.round) {
+      notified.current = m.round;
+      notifySlotSettled(machineId, m.result);
+    }
     for (let i = 0; i < 3; i++) {
       const g = reelsRef.current?.children[i];
       if (g) g.rotation.x = m.reels[i].angle;

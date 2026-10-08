@@ -15,13 +15,26 @@
 
 export const TAU = Math.PI * 2;
 
-export type SymbolId = "SEVEN" | "BAR" | "CHERRY" | "DIAMOND" | "WILD";
+export type SymbolId = "CHERRY" | "LEMON" | "MELON" | "STAR" | "DIAMOND" | "SEVEN";
 
 /** What is printed on each of the 8 faces of a reel, in order around the cylinder. */
-export const FACE_SYMBOLS: readonly SymbolId[] = ["SEVEN", "BAR", "CHERRY", "DIAMOND", "WILD", "BAR", "CHERRY", "DIAMOND"];
+export const FACE_SYMBOLS: readonly SymbolId[] = ["SEVEN", "CHERRY", "LEMON", "MELON", "STAR", "DIAMOND", "CHERRY", "LEMON"];
 export const FACE_COUNT = FACE_SYMBOLS.length;
-/** Rotation.x that brings face `i` to the front is exactly i * FACE_STEP (see slots reel kit). */
+/** Rotation.x that brings face `i` to the front is exactly i * FACE_STEP (see the reel kit). */
 export const FACE_STEP = TAU / FACE_COUNT;
+
+/** The symbols the server (/api/games/slots) sends back, and how they map onto reel art. */
+const EMOJI_TO_SYMBOL: Record<string, SymbolId> = {
+  "\u{1F352}": "CHERRY",
+  "\u{1F34B}": "LEMON",
+  "\u{1F349}": "MELON",
+  "\u2B50": "STAR",
+  "\u{1F48E}": "DIAMOND",
+  "7\u20E3": "SEVEN",
+};
+export function symbolFromServer(id: string): SymbolId {
+  return EMOJI_TO_SYMBOL[id.replace(/\uFE0F/g, "")] ?? "CHERRY";
+}
 
 /** Seconds after the lever pull at which each reel has come to rest. */
 export const STOP_TIMES: readonly [number, number, number] = [1.5, 2.2, 3.0];
@@ -40,9 +53,20 @@ export interface SlotResult {
   faces: [number, number, number];
   symbols: [SymbolId, SymbolId, SymbolId];
   win: boolean;
-  /** The matching symbol on a win (wilds substitute). */
+  /** The matching symbol on a win. */
   symbol: SymbolId | null;
-  payoutMultiplier: number;
+  /** Total returned to the player (stake included), 0 on a loss. Only known for server rounds. */
+  payout: number;
+  jackpotWon: number;
+  source: "server" | "local";
+}
+
+/** What POST /api/games/slots returns. */
+export interface ServerOutcome {
+  reels: string[];
+  won: boolean;
+  payout: number;
+  jackpotWon: number;
 }
 
 export interface ReelState {
@@ -76,22 +100,21 @@ export interface SlotMachineState {
 
 export type Rng = () => number;
 
-const PAYOUT: Record<SymbolId, number> = { SEVEN: 50, DIAMOND: 20, BAR: 10, CHERRY: 5, WILD: 100 };
-const WIN_WEIGHTS: [SymbolId, number][] = [
-  ["SEVEN", 3],
-  ["BAR", 2],
-  ["CHERRY", 2],
-  ["DIAMOND", 2],
-  ["WILD", 1],
+/** Symbol weights, same as the server, for the local fallback roll. */
+const WEIGHTS: [SymbolId, number][] = [
+  ["CHERRY", 30],
+  ["LEMON", 25],
+  ["MELON", 20],
+  ["STAR", 12],
+  ["DIAMOND", 8],
+  ["SEVEN", 4],
 ];
 
-/** Three of a kind wins; WILD stands in for anything. */
-export function evaluate(symbols: readonly SymbolId[]): { win: boolean; symbol: SymbolId | null; payoutMultiplier: number } {
-  const plain = symbols.filter((s) => s !== "WILD");
-  if (plain.length === 0) return { win: true, symbol: "WILD", payoutMultiplier: PAYOUT.WILD };
-  const first = plain[0];
-  if (plain.every((s) => s === first)) return { win: true, symbol: first, payoutMultiplier: PAYOUT[first] };
-  return { win: false, symbol: null, payoutMultiplier: 0 };
+/** Same rules as the server: three of a kind, or the first two / last two matching, wins. */
+export function evaluate(symbols: readonly SymbolId[]): { win: boolean; symbol: SymbolId | null } {
+  if (symbols[0] === symbols[1] && symbols[1] === symbols[2]) return { win: true, symbol: symbols[0] };
+  if (symbols[0] === symbols[1] || symbols[1] === symbols[2]) return { win: true, symbol: symbols[0] === symbols[1] ? symbols[0] : symbols[1] };
+  return { win: false, symbol: null };
 }
 
 function facesFor(symbol: SymbolId): number[] {
@@ -106,14 +129,23 @@ function pick<T>(arr: readonly T[], rng: Rng): T {
   return arr[Math.min(arr.length - 1, Math.floor(rng() * arr.length))];
 }
 
-/** Decide the outcome up front. A forced win picks a symbol and lands every reel on it. */
+function resultFor(faces: [number, number, number], extra: Partial<SlotResult> = {}): SlotResult {
+  const symbols = faces.map((f) => FACE_SYMBOLS[f]) as [SymbolId, SymbolId, SymbolId];
+  const e = evaluate(symbols);
+  return { faces, symbols, win: e.win, symbol: e.symbol, payout: 0, jackpotWon: 0, source: "local", ...extra };
+}
+
+/**
+ * Local fallback roll (demo / the cheat hook). A forced win lands all three reels on one symbol;
+ * an unforced roll is rerolled until it is a genuine loss. Real rounds use outcomeFromServer.
+ */
 export function rollOutcome(forceWin: boolean, rng: Rng = Math.random): SlotResult {
   let faces: [number, number, number];
   if (forceWin) {
-    const total = WIN_WEIGHTS.reduce((a, [, w]) => a + w, 0);
+    const total = WEIGHTS.reduce((a, [, w]) => a + w, 0);
     let r = rng() * total;
-    let sym: SymbolId = WIN_WEIGHTS[0][0];
-    for (const [s, w] of WIN_WEIGHTS) {
+    let sym: SymbolId = WEIGHTS[0][0];
+    for (const [s, w] of WEIGHTS) {
       if ((r -= w) < 0) {
         sym = s;
         break;
@@ -122,16 +154,22 @@ export function rollOutcome(forceWin: boolean, rng: Rng = Math.random): SlotResu
     const f = facesFor(sym);
     faces = [pick(f, rng), pick(f, rng), pick(f, rng)];
   } else {
-    // Uniform faces, rerolled until it is a genuine loss (a bounded loop, then a hard fallback).
     faces = [0, 0, 0];
     for (let tries = 0; tries < 64; tries++) {
       faces = [Math.floor(rng() * FACE_COUNT), Math.floor(rng() * FACE_COUNT), Math.floor(rng() * FACE_COUNT)];
       if (!evaluate(faces.map((f) => FACE_SYMBOLS[f])).win) break;
-      if (tries === 63) faces = [0, 1, 2]; // SEVEN, BAR, CHERRY
+      if (tries === 63) faces = [0, 1, 2]; // SEVEN, CHERRY, LEMON
     }
   }
-  const symbols = faces.map((f) => FACE_SYMBOLS[f]) as [SymbolId, SymbolId, SymbolId];
-  return { faces, symbols, ...evaluate(symbols) };
+  return resultFor(faces);
+}
+
+/** Turn the server's answer into face indices to aim at (any face carrying that symbol). */
+export function outcomeFromServer(o: ServerOutcome, rng: Rng = Math.random): SlotResult {
+  const faces = o.reels.map((id) => pick(facesFor(symbolFromServer(id)), rng)) as [number, number, number];
+  const r = resultFor(faces, { payout: o.payout, jackpotWon: o.jackpotWon, source: "server" });
+  r.win = o.won; // the server is the authority on whether this paid
+  return r;
 }
 
 /** The reel's free-spinning curve: smooth spin-up, then constant speed. Pure in t. */
@@ -197,13 +235,14 @@ export function setRigged(id: string, value: boolean): void {
 }
 
 /** Pull the lever. Ignored (returns false) while the reels are still moving. */
-export function requestSpin(m: SlotMachineState, rng: Rng = Math.random): boolean {
+export function requestSpin(m: SlotMachineState, rng: Rng = Math.random, outcome?: ServerOutcome): boolean {
   if (m.phase === "SPINNING" || m.phase === "DECELERATING") return false;
 
-  // 1. Roll first. The visuals below only ever aim at this.
+  // 1. The outcome exists before the first frame of the spin. A real round passes the server's
+  //    answer (which always wins over the cheat flags); otherwise roll locally, honouring the flags.
   const forceWin = m.upcomingWin || m.isRigged;
   m.upcomingWin = false;
-  const result = rollOutcome(forceWin, rng);
+  const result = outcome ? outcomeFromServer(outcome, rng) : rollOutcome(forceWin, rng);
 
   // 2. Aim each reel. All timing is fixed here; per-frame code only samples reelAngleAt.
   m.reels.forEach((reel, i) => {
