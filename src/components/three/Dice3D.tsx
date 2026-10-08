@@ -29,8 +29,8 @@ function Face({ rotation, value }: { rotation: [number, number, number]; value: 
     <group rotation={rotation} position={[0, 0.251, 0]}>
       {PIPS[value].map(([x, y], i) => (
         <mesh key={i} position={[x, 0, y]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.045, 12]} />
-          <meshStandardMaterial color="#1a1a1a" />
+          <circleGeometry args={[0.045, 16]} />
+          <meshStandardMaterial color="#c81e3f" roughness={0.3} />
         </mesh>
       ))}
     </group>
@@ -77,7 +77,7 @@ export function Die3D({
     <group ref={groupRef} position={position}>
       <mesh castShadow>
         <boxGeometry args={[0.5, 0.5, 0.5]} />
-        <meshStandardMaterial color="#f4f4f4" roughness={0.4} />
+        <meshPhysicalMaterial color="#fafafa" roughness={0.18} clearcoat={0.8} clearcoatRoughness={0.15} />
       </mesh>
       {[1, 2, 3, 4, 5, 6].map((v) => (
         <Face key={v} rotation={FACE_UP_ROTATION[v]} value={v} />

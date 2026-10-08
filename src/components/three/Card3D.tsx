@@ -8,48 +8,90 @@ import type { Card } from "@/lib/types";
 const SUIT_SYMBOL: Record<string, string> = { S: "♠", H: "♥", D: "♦", C: "♣" };
 const textureCache = new Map<string, THREE.CanvasTexture>();
 
+function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
 function faceTexture(card: Card): THREE.CanvasTexture {
   const key = `${card.rank}${card.suit}`;
   const cached = textureCache.get(key);
   if (cached) return cached;
 
+  const W = 512;
+  const H = Math.round(512 * (358 / 256));
   const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 358;
+  canvas.width = W;
+  canvas.height = H;
   const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = "#f7f7f7";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = "#111";
-  ctx.lineWidth = 8;
-  ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+
+  // Transparent outside the rounded card so the mesh edge reads as a real card, not a white box.
+  ctx.clearRect(0, 0, W, H);
+  roundedRectPath(ctx, 6, 6, W - 12, H - 12, 34);
+  ctx.save();
+  ctx.clip();
+
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, "#ffffff");
+  bg.addColorStop(1, "#eef0f5");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
 
   const red = card.suit === "H" || card.suit === "D";
-  ctx.fillStyle = red ? "#d81b3f" : "#111111";
+  const inkColor = red ? "#c81e3f" : "#161616";
+  ctx.fillStyle = inkColor;
   const symbol = SUIT_SYMBOL[card.suit];
 
   ctx.textBaseline = "top";
-  ctx.font = "bold 54px sans-serif";
-  ctx.fillText(card.rank, 20, 16);
-  ctx.font = "54px sans-serif";
-  ctx.fillText(symbol, 20, 76);
+  ctx.font = "bold 92px Georgia, 'Times New Roman', serif";
+  ctx.fillText(card.rank, 34, 24);
+  ctx.font = "80px sans-serif";
+  ctx.fillText(symbol, 36, 128);
 
   ctx.save();
-  ctx.translate(canvas.width - 20, canvas.height - 16);
+  ctx.translate(W - 34, H - 24);
   ctx.rotate(Math.PI);
   ctx.textBaseline = "top";
-  ctx.font = "bold 54px sans-serif";
+  ctx.font = "bold 92px Georgia, 'Times New Roman', serif";
   ctx.fillText(card.rank, 0, 0);
-  ctx.font = "54px sans-serif";
-  ctx.fillText(symbol, 0, 60);
+  ctx.font = "80px sans-serif";
+  ctx.fillText(symbol, 2, 106);
   ctx.restore();
 
-  ctx.font = "140px sans-serif";
+  // Large watermark suit, softened, centered
+  ctx.globalAlpha = 0.92;
+  ctx.font = "260px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(symbol, canvas.width / 2, canvas.height / 2 + 10);
+  const grad = ctx.createLinearGradient(0, H / 2 - 150, 0, H / 2 + 150);
+  grad.addColorStop(0, inkColor);
+  grad.addColorStop(1, red ? "#8e0f28" : "#000000");
+  ctx.fillStyle = grad;
+  ctx.fillText(symbol, W / 2, H / 2 + 14);
+  ctx.globalAlpha = 1;
+
+  // Inner border + subtle vignette for a premium card stock look
+  roundedRectPath(ctx, 20, 20, W - 40, H - 40, 26);
+  ctx.strokeStyle = red ? "#e3b4bd" : "#c9c9ce";
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  ctx.restore();
+
+  // Outer border on the full rounded shape
+  roundedRectPath(ctx, 6, 6, W - 12, H - 12, 34);
+  ctx.strokeStyle = "#1a1a1a";
+  ctx.lineWidth = 7;
+  ctx.stroke();
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
+  texture.anisotropy = 4;
   textureCache.set(key, texture);
   return texture;
 }
@@ -57,26 +99,58 @@ function faceTexture(card: Card): THREE.CanvasTexture {
 let backTexture: THREE.CanvasTexture | null = null;
 function cardBackTexture(): THREE.CanvasTexture {
   if (backTexture) return backTexture;
+  const W = 512;
+  const H = Math.round(512 * (358 / 256));
   const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 358;
+  canvas.width = W;
+  canvas.height = H;
   const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = "#2a1f5e";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = "#7c5cff";
-  ctx.lineWidth = 10;
-  ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
-  ctx.fillStyle = "#3a2c7a";
-  for (let y = 0; y < canvas.height; y += 24) {
-    ctx.fillRect(0, y, canvas.width, 10);
+
+  ctx.clearRect(0, 0, W, H);
+  roundedRectPath(ctx, 6, 6, W - 12, H - 12, 34);
+  ctx.save();
+  ctx.clip();
+
+  const bg = ctx.createRadialGradient(W / 2, H / 2, 20, W / 2, H / 2, W * 0.8);
+  bg.addColorStop(0, "#3a2c7a");
+  bg.addColorStop(1, "#1c1442");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.strokeStyle = "rgba(255, 213, 74, 0.35)";
+  ctx.lineWidth = 1.5;
+  for (let i = -H; i < W + H; i += 22) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i + H, H);
+    ctx.stroke();
   }
+
+  roundedRectPath(ctx, 30, 30, W - 60, H - 60, 24);
+  ctx.strokeStyle = "#ffd54a";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  ctx.font = "bold 150px serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(255, 213, 74, 0.85)";
+  ctx.fillText("♠", W / 2, H / 2 + 10);
+  ctx.restore();
+
+  roundedRectPath(ctx, 6, 6, W - 12, H - 12, 34);
+  ctx.strokeStyle = "#0e0a24";
+  ctx.lineWidth = 7;
+  ctx.stroke();
+
   backTexture = new THREE.CanvasTexture(canvas);
   backTexture.needsUpdate = true;
   return backTexture;
 }
 
-const CARD_W = 0.62;
-const CARD_H = 0.62 * (358 / 256);
+const CARD_W = 0.64;
+const CARD_H = 0.64 * (358 / 256);
+const CARD_THICKNESS = 0.012;
 
 /** A single playing card as a 3D mesh. Pass `card={null}` for a face-down card. */
 export function Card3D({
@@ -116,9 +190,17 @@ export function Card3D({
 
   return (
     <group ref={groupRef} position={position} rotation={[-Math.PI / 2 + 0.001, 0, rotationY]}>
-      <mesh castShadow receiveShadow>
-        <planeGeometry args={[CARD_W, CARD_H]} />
-        <meshStandardMaterial map={texture} roughness={0.5} />
+      <mesh castShadow receiveShadow position={[0, CARD_THICKNESS / 2, 0]}>
+        <boxGeometry args={[CARD_W, CARD_THICKNESS, CARD_H]} />
+        <meshPhysicalMaterial
+          map={texture}
+          transparent
+          alphaTest={0.05}
+          roughness={0.35}
+          clearcoat={0.6}
+          clearcoatRoughness={0.3}
+          sheen={0.3}
+        />
       </mesh>
     </group>
   );
