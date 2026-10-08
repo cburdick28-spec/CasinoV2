@@ -4,8 +4,9 @@ import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import { EYE_HEIGHT, roomAt, stationBySlug } from "./world";
-import { IN_WORLD_GAMES, getFocus, leaveFocus } from "./inworld";
-import { stepBet } from "./slotPlay";
+import { getFocus, leaveFocus } from "./inworld";
+import { GAME_MODULES } from "./games";
+import { dispatchKey, stepBet } from "./games/bridge";
 import { moveCircle, nearestStation, nearestValidPosition } from "./collision";
 import { getWalkState, patchWalkState } from "./state";
 
@@ -13,6 +14,8 @@ declare global {
   interface Window {
     __casino?: {
       teleport: (x: number, z: number, yawDeg: number, pitchDeg: number) => void;
+      /** Jump the seated camera straight to its framed pose (tests: the glide is slow in software GL). */
+      snapFocus: () => void;
       getState: () => {
         x: number;
         z: number;
@@ -138,25 +141,17 @@ export default function PlayerController({ onInteract }: { onInteract: (slug: st
     const onKeyDown = (e: KeyboardEvent) => {
       if (typingTarget()) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      const focused = getFocus();
-      if (focused) {
-        // Playing a machine in the world: Enter opens the full game page, Esc or any walk key steps away.
-        if (e.code === "Enter" && !e.repeat) {
-          onInteractRef.current(focused, true);
-          return;
-        }
-        // Bet up / down, like the buttons on a real machine.
-        if (e.code === "ArrowUp" || e.code === "Equal" || e.code === "NumpadAdd") {
+      if (getFocus()) {
+        // Seated at a game. Esc or W A S D stand you up; everything else belongs to the game.
+        if (e.code === "Escape" || e.code === "KeyW" || e.code === "KeyA" || e.code === "KeyS" || e.code === "KeyD") {
+          leaveFocus();
+        } else {
+          if (e.code === "ArrowUp" || e.code === "Equal" || e.code === "NumpadAdd") stepBet(1);
+          else if (e.code === "ArrowDown" || e.code === "Minus" || e.code === "NumpadSubtract") stepBet(-1);
+          else if (e.repeat || !dispatchKey(e.code)) return;
           e.preventDefault();
-          stepBet(1);
           return;
         }
-        if (e.code === "ArrowDown" || e.code === "Minus" || e.code === "NumpadSubtract") {
-          e.preventDefault();
-          stepBet(-1);
-          return;
-        }
-        if (e.code === "Escape" || MOVE_KEYS[e.code]) leaveFocus();
       }
       const dir = MOVE_KEYS[e.code];
       if (dir) {
@@ -211,6 +206,7 @@ export default function PlayerController({ onInteract }: { onInteract: (slug: st
     let travelled = 0;
     const onPointerDown = (e: PointerEvent) => {
       if (e.button !== 0 && e.pointerType === "mouse") return;
+      if (getFocus()) return; // seated: clicks belong to the game (3D objects, bar)
       if (s.locked) {
         const near = getWalkState().near;
         if (near) onInteractRef.current(near);
@@ -299,6 +295,9 @@ export default function PlayerController({ onInteract }: { onInteract: (slug: st
     if (!new URLSearchParams(window.location.search).has("debug")) return;
     const s = sim.current;
     const hook: NonNullable<Window["__casino"]> = {
+      snapFocus() {
+        s.focusMix = 1;
+      },
       teleport(x, z, yawDeg, pitchDeg) {
         const p = nearestValidPosition(x, z);
         s.x = p.x;
@@ -411,7 +410,7 @@ export default function PlayerController({ onInteract }: { onInteract: (slug: st
 
     // Glide into (or back out of) the framed shot of an in-world game. The mix is a damped
     // approach, so it is frame-rate independent; the player's own pose is never modified.
-    const fg = focusSlug ? IN_WORLD_GAMES[focusSlug] : undefined;
+    const fg = focusSlug ? GAME_MODULES[focusSlug]?.camera : undefined;
     const st = focusSlug ? stationBySlug(focusSlug) : undefined;
     if (fg && st) s.lastFocus = { x: st.position[0], z: st.position[1], yaw: st.yaw, eye: fg.eye, target: fg.target };
     s.focusMix += ((fg && st ? 1 : 0) - s.focusMix) * (1 - Math.exp(-FOCUS_RATE * dt));

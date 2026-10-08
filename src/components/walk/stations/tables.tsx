@@ -1,5 +1,6 @@
 "use client";
 
+import { useSeated } from "../games/bridge";
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group, MeshBasicMaterial, SphereGeometry, MeshStandardMaterial, DoubleSide } from "three";
@@ -87,12 +88,15 @@ const bjCards = () =>
   });
 
 export function Blackjack() {
+  const seated = useSeated("blackjack"); // the big floating showcase cards would block the seated view
   return (
     <>
       <KitMeshes built={bjTable()} />
-      <Bob amp={0.04} speed={1.3} position={[0, Y + 0.45, -0.4]}>
-        <KitMeshes built={bjCards()} />
-      </Bob>
+      {!seated && (
+        <Bob amp={0.04} speed={1.3} position={[0, Y + 0.45, -0.4]}>
+          <KitMeshes built={bjCards()} />
+        </Bob>
+      )}
     </>
   );
 }

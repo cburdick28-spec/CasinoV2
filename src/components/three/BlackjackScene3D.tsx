@@ -25,10 +25,13 @@ export default function BlackjackScene3D({
   dealerCards,
   hands,
   activeHandIndex,
+  chips = true,
 }: {
   dealerCards: (Card | null)[];
   hands: Card[][];
   activeHandIndex?: number;
+  /** The two decorative chip stacks beside the table (the walkable casino has its own on the table). */
+  chips?: boolean;
 }) {
   const handCount = hands.length || 1;
   const spacingX = handCount > 1 ? 1.8 : 0;
@@ -54,8 +57,8 @@ export default function BlackjackScene3D({
         );
       })}
 
-      <ChipStack position={[-2.0, 0, 1.9]} color="#b91c1c" />
-      <ChipStack position={[2.0, 0, 1.9]} color="#1d4ed8" />
+      {chips && <ChipStack position={[-2.0, 0, 1.9]} color="#b91c1c" />}
+      {chips && <ChipStack position={[2.0, 0, 1.9]} color="#1d4ed8" />}
     </>
   );
 }
