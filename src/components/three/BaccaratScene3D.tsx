@@ -24,19 +24,31 @@ function ChipStack({ position, color }: { position: [number, number, number]; co
 export default function BaccaratScene3D({
   playerCards,
   bankerCards,
+  felt = true,
+  flat = false,
+  compact = false,
+  chips = true,
 }: {
   playerCards: Card[];
   bankerCards: Card[];
+  /** Draw the scene's own felt disc (off when a station table supplies the felt). */
+  felt?: boolean;
+  /** Lay the cards flat on the table (for a seated view) instead of standing upright. */
+  flat?: boolean;
+  /** Hands side by side at the same depth, with spaced cards that do not overlap (for a smaller table). */
+  compact?: boolean;
+  /** Draw the decorative chip stacks. */
+  chips?: boolean;
 }) {
   return (
     <>
-      <FeltTable3D color="#5c1b3a" radius={2.6} />
+      {felt && <FeltTable3D color="#5c1b3a" radius={2.6} />}
 
-      <CardHand3D cards={playerCards} center={[-1.3, 0.02, 0.6]} spacing={0.46} />
-      <CardHand3D cards={bankerCards} center={[1.3, 0.02, -0.6]} spacing={0.46} />
+      <CardHand3D cards={playerCards} center={[compact ? -1.4 : -1.3, 0.02, compact ? 0.2 : 0.6]} spacing={compact ? 0.7 : 0.46} flat={flat} />
+      <CardHand3D cards={bankerCards} center={[compact ? 1.4 : 1.3, 0.02, compact ? 0.2 : -0.6]} spacing={compact ? 0.7 : 0.46} flat={flat} />
 
-      <ChipStack position={[-1.3, 0, 1.9]} color="#1d4ed8" />
-      <ChipStack position={[1.3, 0, -1.9]} color="#b91c1c" />
+      {chips && <ChipStack position={[-1.3, 0, 1.9]} color="#1d4ed8" />}
+      {chips && <ChipStack position={[1.3, 0, -1.9]} color="#b91c1c" />}
     </>
   );
 }

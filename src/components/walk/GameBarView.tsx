@@ -26,8 +26,8 @@ export default function GameBarView({ touch }: { touch: boolean }) {
   return (
     <div
       data-gamebar
-      className="absolute left-1/2 flex flex-col items-center gap-2"
-      style={{ bottom: 14, transform: "translateX(-50%)", zIndex: 20, maxWidth: "94%", pointerEvents: "none" }}
+      className="absolute flex flex-col items-center gap-2"
+      style={{ bottom: 14, left: 0, right: 0, marginInline: "auto", width: "max-content", zIndex: 20, maxWidth: "94%", pointerEvents: "none" }}
     >
       <div
         className="flex flex-col items-center gap-2"

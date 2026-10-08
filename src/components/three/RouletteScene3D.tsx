@@ -33,9 +33,12 @@ function pocketColor(n: number): string {
 export default function RouletteScene3D({
   spinning,
   winningNumber,
+  base = true,
 }: {
   spinning: boolean;
   winningNumber: number | null;
+  /** Draw the scene's own round table base (the 2D page wants it; the in-world table already has a felt). */
+  base?: boolean;
 }) {
   const wheelRef = useRef<THREE.Group>(null);
   const ballRef = useRef<THREE.Group>(null);
@@ -54,6 +57,9 @@ export default function RouletteScene3D({
 
   useFrame(({ clock }, delta) => {
     const s = state.current;
+
+    // A new spin starts with no result; forget the last one so the same number twice in a row still tweens.
+    if (winningNumber === null) s.lastWinning = null;
 
     if (winningNumber !== null && winningNumber !== s.lastWinning) {
       s.lastWinning = winningNumber;
@@ -103,10 +109,12 @@ export default function RouletteScene3D({
   return (
     <group>
       {/* Table base */}
-      <mesh position={[0, -0.08, 0]} receiveShadow castShadow>
-        <cylinderGeometry args={[1.55, 1.6, 0.3, 48]} />
-        <meshStandardMaterial color="#2a1c0d" roughness={0.6} metalness={0.2} />
-      </mesh>
+      {base && (
+        <mesh position={[0, -0.08, 0]} receiveShadow castShadow>
+          <cylinderGeometry args={[1.55, 1.6, 0.3, 48]} />
+          <meshStandardMaterial color="#2a1c0d" roughness={0.6} metalness={0.2} />
+        </mesh>
+      )}
 
       {/* Rotating wheel */}
       <group ref={wheelRef} position={[0, 0.1, 0]}>

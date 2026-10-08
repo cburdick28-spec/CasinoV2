@@ -25,10 +25,15 @@ export default function LimboScene3D({
   display,
   target,
   result,
+  trackColor = "#2a2d45",
+  trackRadius = 0.03,
 }: {
   display: number;
   target: number;
   result: { roll: number; won: boolean } | null;
+  /** Track styling (defaults match the 2D page; the in-world stage uses a brighter, thicker one). */
+  trackColor?: string;
+  trackRadius?: number;
 }) {
   const rocketRef = useRef<THREE.Group>(null);
   const glowRef = useRef<THREE.PointLight>(null);
@@ -53,8 +58,8 @@ export default function LimboScene3D({
     <group position={[0, -1.5, 0]}>
       {/* vertical track */}
       <mesh position={[0, SCALE_WORLD_HEIGHT / 2, 0]}>
-        <cylinderGeometry args={[0.03, 0.03, SCALE_WORLD_HEIGHT, 12]} />
-        <meshStandardMaterial color="#2a2d45" />
+        <cylinderGeometry args={[trackRadius, trackRadius, SCALE_WORLD_HEIGHT, 12]} />
+        <meshStandardMaterial color={trackColor} />
       </mesh>
 
       {/* scale tick marks */}

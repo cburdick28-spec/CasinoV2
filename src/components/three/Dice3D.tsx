@@ -86,13 +86,15 @@ export function Die3D({
   );
 }
 
-export function DiceTray3D({ values, rolling }: { values: number[]; rolling: boolean }) {
+export function DiceTray3D({ values, rolling, tray = true }: { values: number[]; rolling: boolean; /** Draw the green felt disc under the dice (the in-world tables bring their own felt). */ tray?: boolean }) {
   return (
     <>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-        <circleGeometry args={[2, 40]} />
-        <meshStandardMaterial color="#14532d" roughness={0.9} />
-      </mesh>
+      {tray && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
+          <circleGeometry args={[2, 40]} />
+          <meshStandardMaterial color="#14532d" roughness={0.9} />
+        </mesh>
+      )}
       {values.map((v, i) => (
         <Die3D key={i} value={v} rolling={rolling} seed={i * 1.7} position={[(i - (values.length - 1) / 2) * 0.75, 0.3, 0]} />
       ))}

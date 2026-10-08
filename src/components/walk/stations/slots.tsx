@@ -6,6 +6,7 @@ import { Color, Group, InstancedMesh, MeshStandardMaterial, Object3D, SphereGeom
 import { C, Kit, KitMeshes, type Layer, kitCache, lighten, pip, rand, shade } from "./kit";
 import { Halo, Spin } from "./common";
 import { SlotMachineReels, seven } from "./SlotMachineReels";
+import { useSeated } from "../games/bridge";
 
 const P = Math.PI;
 
@@ -116,8 +117,9 @@ export function Slots() {
 
 /* ------------------------------ VIDEO POKER ------------------------------ */
 
-const vpKit = () =>
-  kitCache("vp", (k) => {
+/** `bare` (while seated): no static cards on the screen, the in-world Stage floats the real ones there. */
+const vpKit = (bare = false) =>
+  kitCache(bare ? "vp-bare" : "vp", (k) => {
     const body = "#2c4bb8";
     const dark = "#16245f";
     k.box(0.92, 0.14, 0.8, C.dark, [0, 0.07, 0], { r: 0.03 });
@@ -144,7 +146,7 @@ const vpKit = () =>
       for (let i = 0; i < 4; i++) k.box(0.62 - i * 0.08, 0.012, 0.01, i === 0 ? C.gold : C.lemon, [0, 0.31 - i * 0.03, 0.12], { layer: "scr", i: 1.4 });
       // five cards
       const suits = ["h", "s", "d", "s", "h"] as const;
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 5 && !bare; i++) {
         const x = (i - 2) * 0.145;
         k.box(0.125, 0.2, 0.012, C.paper, [x, -0.02, 0.125], { r: 0.008, layer: "scr", i: 1.15 });
         k.at([x, -0.02, 0.134], null, null, () => pip(k, suits[i], 0.1, suits[i] === "s" ? "#222233" : "#e8352d", { layer: "scr", i: 1 }));
@@ -169,9 +171,10 @@ const vpKit = () =>
   });
 
 export function VideoPoker() {
+  const seated = useSeated("videopoker");
   return (
     <>
-      <KitMeshes built={vpKit()} />
+      <KitMeshes built={vpKit(seated)} />
       <Halo position={[0, 1.65, 0.45]} size={1.7} color="#4d8cff" opacity={0.28} />
       <Halo position={[0, 2.2, 0.35]} size={1.6} color="#7df9ff" opacity={0.22} />
     </>
@@ -232,6 +235,7 @@ const BALL_COLORS = [C.red, C.lemon, C.cyan, C.lime, C.pink, C.orange, C.violet,
 const dummy = new Object3D();
 
 export function Keno() {
+  const seated = useSeated("keno");
   const balls = useRef<InstancedMesh>(null);
   const params = useMemo(() => {
     const a = new Float32Array(NB * 6);
@@ -268,7 +272,7 @@ export function Keno() {
   return (
     <>
       <KitMeshes built={kenoBase()} />
-      <group position={[0, 1.5, 0]}>
+      <group position={[0, 1.5, 0]} visible={!seated}>
         <Spin axis="x" speed={0.9}>
           <KitMeshes built={kenoCage()} />
         </Spin>
@@ -332,6 +336,7 @@ const wheelFrame = () =>
   });
 
 export function Wheel() {
+  const seated = useSeated("wheel"); // the in-world Stage draws the real prize wheel in the frame
   const wheel = useRef<Group>(null);
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
@@ -345,10 +350,12 @@ export function Wheel() {
   return (
     <>
       <KitMeshes built={wheelFrame()} />
-      <group ref={wheel} position={[0, 1.38, 0.0]}>
-        <KitMeshes built={wheelFace()} />
-      </group>
-      <Halo position={[0, 1.4, 0.2]} size={3} color="#ffb04a" opacity={0.18} />
+      {!seated && (
+        <group ref={wheel} position={[0, 1.38, 0.0]}>
+          <KitMeshes built={wheelFace()} />
+        </group>
+      )}
+      {!seated && <Halo position={[0, 1.4, 0.2]} size={3} color="#ffb04a" opacity={0.18} />}
     </>
   );
 }

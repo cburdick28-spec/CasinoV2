@@ -159,12 +159,15 @@ export function Card3D({
   rotationY = 0,
   dealt = true,
   delay = 0,
+  flat = false,
 }: {
   card: Card | null;
   position?: [number, number, number];
   rotationY?: number;
   dealt?: boolean;
   delay?: number;
+  /** Lie face-up on the table, readable from the +z side, instead of standing upright (rotationY is ignored). */
+  flat?: boolean;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const t0 = useRef<number | null>(null);
@@ -189,15 +192,15 @@ export function Card3D({
   });
 
   return (
-    <group ref={groupRef} position={position} rotation={[-Math.PI / 2 + 0.001, 0, rotationY]}>
+    <group ref={groupRef} position={position} rotation={flat ? [0, 0, 0] : [-Math.PI / 2 + 0.001, 0, rotationY]}>
       <mesh castShadow receiveShadow position={[0, CARD_THICKNESS / 2, 0]}>
         <boxGeometry args={[CARD_W, CARD_THICKNESS, CARD_H]} />
         <meshPhysicalMaterial
           map={texture}
           transparent
           alphaTest={0.05}
-          roughness={0.35}
-          clearcoat={0.6}
+          roughness={flat ? 0.7 : 0.35}
+          clearcoat={flat ? 0 : 0.6}
           clearcoatRoughness={0.3}
           sheen={0.3}
         />
@@ -212,11 +215,13 @@ export function CardHand3D({
   center = [0, 0.02, 0] as [number, number, number],
   faceDown = false,
   spacing = 0.44,
+  flat = false,
 }: {
   cards: (Card | null)[];
   center?: [number, number, number];
   faceDown?: boolean;
   spacing?: number;
+  flat?: boolean;
 }) {
   const total = cards.length;
   return (
@@ -229,6 +234,7 @@ export function CardHand3D({
             card={faceDown ? null : c}
             position={[x, center[1] + i * 0.004, center[2]]}
             delay={i * 0.12}
+            flat={flat}
           />
         );
       })}

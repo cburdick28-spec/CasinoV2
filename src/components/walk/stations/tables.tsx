@@ -103,21 +103,22 @@ export function Blackjack() {
 
 /* ------------------------------ TEXAS HOLD'EM ------------------------------ */
 
-const pokerTable = () =>
-  kitCache("poker-table", (k) => {
+const pokerTable = (seated = false) =>
+  kitCache(seated ? "poker-table-seated" : "poker-table", (k) => {
     tableOval(k, 1.2, 0.92, "#17705e", C.violet, C.gold, "#4a2f8f", "#a58bff");
     const seats = 7;
     for (let i = 0; i < seats; i++) {
       const ang = -Math.PI * 0.45 + (i / (seats - 1)) * Math.PI * 0.9;
       const px = Math.sin(ang) * 0.92;
       const pz = Math.cos(ang) * 0.62;
-      flatCard(k, px - 0.035, Y + 0.002, pz * 1.0, ang * 0.8, "back", i % 2 ? C.blue : C.crimson);
-      flatCard(k, px + 0.035, Y + 0.002, pz * 1.0, ang * 0.8 + 0.12, "back", i % 2 ? C.blue : C.crimson);
+      if (seated && Math.abs(ang) < 0.9) continue; // the Stage deals the cards in the middle seats
+      if (!seated) flatCard(k, px - 0.035, Y + 0.002, pz * 1.0, ang * 0.8, "back", i % 2 ? C.blue : C.crimson);
+      if (!seated) flatCard(k, px + 0.035, Y + 0.002, pz * 1.0, ang * 0.8 + 0.12, "back", i % 2 ? C.blue : C.crimson);
       chipStack(k, px * 1.08, Y, pz * 1.18 - 0.05, [C.red, C.paper, C.red, C.green, C.green].slice(0, 2 + (i % 4)));
     }
     // community cards
     const suits = ["h", "s", "d", "c", "h"] as const;
-    for (let i = 0; i < 5; i++) flatCard(k, (i - 2) * 0.125, Y + 0.002, 0.0, 0, suits[i], C.crimson, 1.1);
+    if (!seated) for (let i = 0; i < 5; i++) flatCard(k, (i - 2) * 0.125, Y + 0.002, 0.0, 0, suits[i], C.crimson, 1.1);
     // pot
     chipStack(k, -0.2, Y, -0.22, [C.gold, C.gold, C.red, C.red, C.violet, C.violet, C.paper]);
     chipStack(k, -0.12, Y, -0.27, [C.blue, C.blue, C.blue, C.green]);
@@ -128,6 +129,7 @@ const pokerTable = () =>
     // deck
     k.box(0.1, 0.05, 0.14, C.crimson, [-0.58, Y + 0.025, -0.4], { r: 0.01, rot: [0, 0.3, 0] });
     // pedestal for the big chip
+    if (seated) return;
     k.cyl(0.07, 0.11, 0.16, C.goldDeep, [0, Y + 0.08, -0.55]);
     k.cyl(0.03, 0.03, 0.5, C.goldDeep, [0, Y + 0.38, -0.55], { seg: 10 });
   });
@@ -152,6 +154,8 @@ const bigChip = () =>
   });
 
 export function Poker() {
+  const seated = useSeated("poker"); // the Stage deals the real cards; the floating chip would block the view
+  if (seated) return <KitMeshes built={pokerTable(true)} />;
   return (
     <>
       <KitMeshes built={pokerTable()} />
@@ -165,8 +169,8 @@ export function Poker() {
 
 /* ------------------------------ BACCARAT ------------------------------ */
 
-const baccTable = () =>
-  kitCache("bacc-table", (k) => {
+const baccTable = (seated = false) =>
+  kitCache(seated ? "bacc-table-seated" : "bacc-table", (k) => {
     k.at([0, 0, 0.12], null, null, () => {
       tableOval(k, 1.2, 0.9, "#1d5fae", C.goldDeep, C.gold, "#1c3f87", "#6ea8ff");
       // player / banker / tie zones
@@ -180,13 +184,15 @@ const baccTable = () =>
       for (let i = 0; i < 7; i++) {
         const a = -Math.PI * 0.42 + (i / 6) * Math.PI * 0.84;
         flatRing(k, Math.sin(a) * 1.0, Y + 0.002, Math.cos(a) * 0.7, 0.045, C.gold, 0.006);
-        chipStack(k, Math.sin(a) * 0.94, Y, Math.cos(a) * 0.52, [C.gold, C.blue, C.gold, C.paper].slice(0, 2 + (i % 3)));
+        if (!seated) chipStack(k, Math.sin(a) * 0.94, Y, Math.cos(a) * 0.52, [C.gold, C.blue, C.gold, C.paper].slice(0, 2 + (i % 3)));
       }
       // hands
-      flatCard(k, -0.5, Y + 0.002, -0.12, 0.2, "h");
-      flatCard(k, -0.4, Y + 0.002, -0.12, -0.1, "s");
-      flatCard(k, 0.4, Y + 0.002, -0.12, 0.1, "d");
-      flatCard(k, 0.5, Y + 0.002, -0.14, 1.5, "c");
+      if (!seated) {
+        flatCard(k, -0.5, Y + 0.002, -0.12, 0.2, "h");
+        flatCard(k, -0.4, Y + 0.002, -0.12, -0.1, "s");
+        flatCard(k, 0.4, Y + 0.002, -0.12, 0.1, "d");
+        flatCard(k, 0.5, Y + 0.002, -0.14, 1.5, "c");
+      }
       // shoe
       k.box(0.2, 0.12, 0.16, C.goldDeep, [0.0, Y + 0.06, -0.12], { r: 0.03 });
       k.box(0.16, 0.05, 0.12, C.crimson, [0.0, Y + 0.14, -0.1], { r: 0.015, rot: [0.2, 0, 0] });
@@ -208,22 +214,26 @@ const baccTable = () =>
   });
 
 export function Baccarat() {
-  return <KitMeshes built={baccTable()} />;
+  const seated = useSeated("baccarat"); // the Stage deals the real hands
+  return <KitMeshes built={baccTable(seated)} />;
 }
 
 /* ------------------------------ CASINO WAR ------------------------------ */
 
-const warTable = () =>
-  kitCache("war-table", (k) => {
+const warTable = (seated = false) =>
+  kitCache(seated ? "war-table-seated" : "war-table", (k) => {
     tableOval(k, 1.15, 1.0, "#a32a43", C.orange, C.gold, "#8a3a14", "#ffa24a");
     flatRing(k, 0, Y + 0.003, 0.12, 0.17, C.gold, 0.01);
     flatRing(k, 0, Y + 0.003, 0.12, 0.13, C.gold, 0.006);
-    flatCard(k, -0.3, Y + 0.002, 0.2, 0.15, "s", C.crimson, 1.25);
-    flatCard(k, 0.3, Y + 0.002, 0.2, -0.15, "h", C.crimson, 1.25);
-    flatCard(k, -0.5, Y + 0.002, 0.45, 0.4, "back", C.navy);
-    flatCard(k, 0.5, Y + 0.002, 0.45, -0.4, "back", C.navy);
+    if (!seated) {
+      flatCard(k, -0.3, Y + 0.002, 0.2, 0.15, "s", C.crimson, 1.25);
+      flatCard(k, 0.3, Y + 0.002, 0.2, -0.15, "h", C.crimson, 1.25);
+      flatCard(k, -0.5, Y + 0.002, 0.45, 0.4, "back", C.navy);
+      flatCard(k, 0.5, Y + 0.002, 0.45, -0.4, "back", C.navy);
+    }
     chipStack(k, -0.62, Y, 0.1, [C.orange, C.paper, C.orange, C.orange]);
     chipStack(k, 0.62, Y, 0.1, [C.orange, C.orange, C.paper, C.blue, C.orange]);
+    if (seated) return; // the Stage deals the real cards where these chips and the shield pedestal stand
     chipStack(k, 0, Y, 0.62, [C.gold, C.gold, C.gold, C.red, C.gold, C.gold]);
     chipStack(k, 0.09, Y, 0.65, [C.gold, C.red, C.gold]);
     // shield pedestal
@@ -259,6 +269,8 @@ const warShield = () =>
   });
 
 export function War() {
+  const seated = useSeated("war"); // the floating shield would block the seated view
+  if (seated) return <KitMeshes built={warTable(true)} />;
   return (
     <>
       <KitMeshes built={warTable()} />
@@ -291,8 +303,8 @@ const rouTable = () =>
     chipStack(k, 0.3, Y, 0.55, [C.violet, C.paper, C.violet, C.violet, C.violet]);
     // wheel stand
     k.cyl(0.18, 0.24, 0.12, C.woodDark, [0, Y + 0.06, -0.45]);
-    k.cyl(0.05, 0.05, 0.4, C.goldDeep, [0, Y + 0.3, -0.45], { seg: 10 });
   });
+const rouPole = () => kitCache("rou-pole", (k) => k.cyl(0.05, 0.05, 0.4, C.goldDeep, [0, Y + 0.3, -0.45], { seg: 10 }));
 
 const REDS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 const rouBowl = () =>
@@ -331,6 +343,7 @@ const ballGeo = new SphereGeometry(0.03, 12, 8);
 const ballMat = new MeshBasicMaterial({ color: "#ffffff", toneMapped: false });
 
 export function Roulette() {
+  const seated = useSeated("roulette"); // the in-world Stage draws its own wheel on the pedestal
   const ball = useRef<Group>(null);
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
@@ -341,15 +354,20 @@ export function Roulette() {
   return (
     <>
       <KitMeshes built={rouTable()} />
-      <group position={[0, Y + 0.85, -0.42]} rotation={[0.62, 0, 0]} scale={1.2}>
-        <KitMeshes built={rouBowl()} />
-        <Spin axis="y" speed={1.1} position={[0, 0.07, 0]}>
-          <KitMeshes built={rouWheel()} />
-        </Spin>
-        <group ref={ball} position={[0, 0.14, 0]}>
-          <mesh geometry={ballGeo} material={ballMat} position={[0.435, 0, 0]} />
-        </group>
-      </group>
+      {!seated && (
+        <>
+          <KitMeshes built={rouPole()} />
+          <group position={[0, Y + 0.85, -0.42]} rotation={[0.62, 0, 0]} scale={1.2}>
+            <KitMeshes built={rouBowl()} />
+            <Spin axis="y" speed={1.1} position={[0, 0.07, 0]}>
+              <KitMeshes built={rouWheel()} />
+            </Spin>
+            <group ref={ball} position={[0, 0.14, 0]}>
+              <mesh geometry={ballGeo} material={ballMat} position={[0.435, 0, 0]} />
+            </group>
+          </group>
+        </>
+      )}
     </>
   );
 }
@@ -402,8 +420,10 @@ const crapsTable = () =>
     // puck and stick
     k.cyl(0.05, 0.05, 0.014, C.paper, [0.5, Y + 0.007, -0.28], { seg: 18 });
     k.cyl(0.035, 0.035, 0.016, C.ink, [0.5, Y + 0.008, -0.28], { seg: 18 });
+  });
+const crapsRestDice = () =>
+  kitCache("craps-rest-dice", (k) => {
     k.box(0.9, 0.012, 0.014, C.wood, [0.2, Y + 0.12, 0.05], { rot: [0, 0.35, 0.12] });
-    // two resting dice
     k.at([-0.35, Y + 0.035, 0.12], [0, 0.6, 0], null, () => die(k, 0.07, C.paper, C.ink));
     k.at([-0.22, Y + 0.035, 0.18], [0, -0.4, 0], null, () => die(k, 0.07, C.red, C.paper));
   });
@@ -412,6 +432,7 @@ const crapsDie = (key: string, body: string, pipc: string) =>
   kitCache("craps-die-" + key, (k) => die(k, 0.34, body, pipc));
 
 export function Craps() {
+  const seated = useSeated("craps"); // the in-world Stage tumbles the real dice on the layout
   const d1 = useRef<Group>(null);
   const d2 = useRef<Group>(null);
   const a = useMemo(() => crapsDie("w", C.paper, C.ink), []);
@@ -434,13 +455,18 @@ export function Craps() {
   return (
     <>
       <KitMeshes built={crapsTable()} />
-      <group ref={d1} position={[-0.3, 1.55, -0.05]}>
-        <KitMeshes built={a} />
-      </group>
-      <group ref={d2} position={[0.25, 1.5, 0.05]}>
-        <KitMeshes built={b} />
-      </group>
-      <Halo position={[0, 1.5, 0]} size={1.8} color="#ff8a5a" opacity={0.2} />
+      {!seated && (
+        <>
+          <KitMeshes built={crapsRestDice()} />
+          <group ref={d1} position={[-0.3, 1.55, -0.05]}>
+            <KitMeshes built={a} />
+          </group>
+          <group ref={d2} position={[0.25, 1.5, 0.05]}>
+            <KitMeshes built={b} />
+          </group>
+          <Halo position={[0, 1.5, 0]} size={1.8} color="#ff8a5a" opacity={0.2} />
+        </>
+      )}
     </>
   );
 }
@@ -495,6 +521,7 @@ const domeGeo = new SphereGeometry(0.345, 24, 16);
 const domeMat = new MeshStandardMaterial({ color: "#bff4ff", transparent: true, opacity: 0.16, depthWrite: false, roughness: 0.1, side: DoubleSide });
 
 export function SicBo() {
+  const seated = useSeated("sicbo"); // the in-world Stage tumbles the real dice under the dome
   const dice = useRef<Group>(null);
   useFrame(({ clock }) => {
     const g = dice.current;
@@ -507,27 +534,31 @@ export function SicBo() {
     <>
       <KitMeshes built={sicTable()} />
       <group position={[0, Y + 0.51, 0]}>
-        <Spin axis="y" speed={0.6}>
-          <KitMeshes built={sicCage()} />
-        </Spin>
+        {!seated && (
+          <Spin axis="y" speed={0.6}>
+            <KitMeshes built={sicCage()} />
+          </Spin>
+        )}
         <mesh geometry={domeGeo} material={domeMat} />
-        <group ref={dice}>
-          <KitMeshes built={sicDice()} />
-        </group>
+        {!seated && (
+          <group ref={dice}>
+            <KitMeshes built={sicDice()} />
+          </group>
+        )}
       </group>
-      <Halo position={[0, Y + 0.51, 0]} size={1.2} color="#7df9ff" opacity={0.25} />
+      {!seated && <Halo position={[0, Y + 0.51, 0]} size={1.2} color="#7df9ff" opacity={0.25} />}
     </>
   );
 }
 
 /* ------------------------------ HIGHER / LOWER ------------------------------ */
 
-const hlTable = () =>
-  kitCache("hl-table", (k) => {
+const hlTable = (seated = false) =>
+  kitCache(seated ? "hl-table-seated" : "hl-table", (k) => {
     tableOval(k, 1.15, 0.95, "#34318a", C.cyan, C.gold, "#26226a", "#5de6ff");
     // ascending row of cards
     const suits = ["c", "d", "s", "h", "d", "c", "h"] as const;
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 7 && !seated; i++) {
       const x = (i - 3) * 0.14;
       flatCard(k, x, Y + 0.002 + i * 0.001, 0.52 - Math.abs(i - 3) * 0.02, (i - 3) * -0.09, suits[i]);
     }
@@ -535,6 +566,7 @@ const hlTable = () =>
     k.box(0.5, 0.004, 0.12, C.red, [-0.62, Y + 0.002, 0.1], { r: 0.01, rot: [0, 0.3, 0] });
     chipStack(k, 0.7, Y, 0.35, [C.green, C.green, C.paper]);
     chipStack(k, -0.7, Y, 0.35, [C.red, C.red, C.paper, C.red]);
+    if (seated) return; // the Stage deals the real cards where the middle chips and the card stand are
     chipStack(k, 0, Y, 0.18, [C.cyan, C.gold, C.cyan]);
     // card stand
     k.box(0.22, 0.05, 0.22, C.goldDeep, [0, Y + 0.025, -0.35], { r: 0.02 });
@@ -563,6 +595,7 @@ const arrowDown = () =>
   });
 
 export function HigherLower() {
+  const seated = useSeated("higherlower"); // the floating card, arrows and halos would block the seated view
   const card = useRef<Group>(null);
   const up = useRef<Group>(null);
   const down = useRef<Group>(null);
@@ -580,6 +613,7 @@ export function HigherLower() {
     if (up.current) up.current.position.y = Y + 0.95 + Math.sin(t * 3) * 0.07;
     if (down.current) down.current.position.y = Y + 0.95 - Math.sin(t * 3) * 0.07;
   });
+  if (seated) return <KitMeshes built={hlTable(true)} />;
   return (
     <>
       <KitMeshes built={hlTable()} />

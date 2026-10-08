@@ -23,10 +23,29 @@ function CageBall({ seed }: { seed: number }) {
 }
 
 /** One drawn number, animated flying out of the cage into its resting slot in the tray below. */
-function EjectedBall({ number, index, matched, total }: { number: number; index: number; matched: boolean; total: number }) {
+function EjectedBall({
+  number,
+  index,
+  matched,
+  total,
+  font,
+  spacing,
+  trayZ,
+  trayY,
+  ballScale,
+}: {
+  number: number;
+  index: number;
+  matched: boolean;
+  total: number;
+  font?: string;
+  spacing: number;
+  trayZ: number;
+  trayY: number;
+  ballScale: number;
+}) {
   const ref = useRef<THREE.Group>(null);
   const progress = useRef(0);
-  const spacing = 0.5;
   const startX = -((total - 1) * spacing) / 2;
   const targetX = startX + index * spacing;
 
@@ -36,14 +55,14 @@ function EjectedBall({ number, index, matched, total }: { number: number; index:
     const eased = 1 - Math.pow(1 - t, 3);
     if (ref.current) {
       ref.current.position.x = THREE.MathUtils.lerp(0, targetX, eased);
-      ref.current.position.y = THREE.MathUtils.lerp(1.3, 0.16, eased) + Math.sin(t * Math.PI) * 0.5;
-      ref.current.position.z = THREE.MathUtils.lerp(0, 0.95, eased);
+      ref.current.position.y = THREE.MathUtils.lerp(1.3, trayY, eased) + Math.sin(t * Math.PI) * 0.5;
+      ref.current.position.z = THREE.MathUtils.lerp(0, trayZ, eased);
       ref.current.rotation.y += delta * (1 - t) * 6;
     }
   });
 
   return (
-    <group ref={ref}>
+    <group ref={ref} scale={ballScale}>
       <mesh castShadow>
         <sphereGeometry args={[0.16, 16, 16]} />
         <meshStandardMaterial
@@ -54,7 +73,7 @@ function EjectedBall({ number, index, matched, total }: { number: number; index:
           metalness={matched ? 0.5 : 0.1}
         />
       </mesh>
-      <Text position={[0, 0, 0.17]} fontSize={0.16} color={matched ? "#1a1400" : "#dbe0ea"} anchorX="center" anchorY="middle">
+      <Text font={font} position={[0, 0, 0.17]} fontSize={0.16} color={matched ? "#1a1400" : "#dbe0ea"} anchorX="center" anchorY="middle">
         {String(number)}
       </Text>
     </group>
@@ -72,11 +91,26 @@ export default function KenoScene3D({
   picks,
   spinning,
   drawCount = 10,
+  font,
+  spacing = 0.5,
+  trayZ = 0.95,
+  trayY = 0.16,
+  ballScale = 1,
+  tray = true,
 }: {
   drawn: number[];
   picks: number[];
   spinning: boolean;
   drawCount?: number;
+  /** Local font file for the ball numbers (the default CDN font hangs offline). */
+  font?: string;
+  /** Distance between resting balls, and where they land (scene units). */
+  spacing?: number;
+  trayZ?: number;
+  trayY?: number;
+  ballScale?: number;
+  /** The dark floor slab under the tray. */
+  tray?: boolean;
 }) {
   const cageRef = useRef<THREE.Group>(null);
   useFrame((_, delta) => {
@@ -101,13 +135,15 @@ export default function KenoScene3D({
       </group>
 
       {/* collection tray */}
-      <mesh position={[0, 0.02, 0.95]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[6, 1.2]} />
-        <meshStandardMaterial color="#0a0d1f" />
-      </mesh>
+      {tray && (
+        <mesh position={[0, 0.02, 0.95]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <planeGeometry args={[6, 1.2]} />
+          <meshStandardMaterial color="#0a0d1f" />
+        </mesh>
+      )}
 
       {drawn.map((n, i) => (
-        <EjectedBall key={n} number={n} index={i} matched={picks.includes(n)} total={drawCount} />
+        <EjectedBall key={n} number={n} index={i} matched={picks.includes(n)} total={drawCount} font={font} spacing={spacing} trayZ={trayZ} trayY={trayY} ballScale={ballScale} />
       ))}
     </group>
   );

@@ -3,9 +3,9 @@
 import { Card3D, FeltTable3D } from "./Card3D";
 import type { Card } from "@/lib/types";
 
-function CrossedBatons() {
+function CrossedBatons({ y = 1.7 }: { y?: number }) {
   return (
-    <group position={[0, 1.7, 0]}>
+    <group position={[0, y, 0]}>
       <mesh rotation={[0, 0, Math.PI / 4]} castShadow>
         <boxGeometry args={[0.07, 1.1, 0.07]} />
         <meshStandardMaterial color="#c9c9c9" metalness={0.8} roughness={0.2} />
@@ -32,33 +32,42 @@ export default function WarScene3D({
   warPlayerCard,
   warDealerCard,
   tied,
+  felt = true,
+  flat = false,
+  batonY = 1.7,
 }: {
   playerCard: Card | null;
   dealerCard: Card | null;
   warPlayerCard?: Card | null;
   warDealerCard?: Card | null;
   tied: boolean;
+  /** Draw the scene's own felt disc (off when a station table supplies the felt). */
+  felt?: boolean;
+  /** Lay the cards flat on the table (for a seated view) instead of standing upright. */
+  flat?: boolean;
+  /** Height of the crossed batons above the felt. */
+  batonY?: number;
 }) {
   const atWar = Boolean(warPlayerCard || warDealerCard);
 
   return (
     <>
-      <FeltTable3D color="#7a1020" radius={2.4} />
+      {felt && <FeltTable3D color="#7a1020" radius={2.4} />}
 
-      {(tied || atWar) && <CrossedBatons />}
+      {(tied || atWar) && <CrossedBatons y={batonY} />}
 
       {/* Original (possibly tied) cards */}
-      <Card3D card={playerCard} position={[-0.9, 0.02, 1.0]} rotationY={0} delay={0} />
-      <Card3D card={dealerCard} position={[0.9, 0.02, -1.0]} rotationY={Math.PI} delay={0.1} />
+      <Card3D card={playerCard} position={[-0.9, 0.02, 1.0]} rotationY={0} delay={0} flat={flat} />
+      <Card3D card={dealerCard} position={[0.9, 0.02, -1.0]} rotationY={Math.PI} delay={0.1} flat={flat} />
 
       {/* War round cards, dealt further toward the camera (player) / further
           toward the camera from the dealer's side, below/in front of the
           original tied cards. */}
       {warPlayerCard && (
-        <Card3D card={warPlayerCard} position={[-0.9, 0.03, 1.9]} rotationY={0} delay={0.2} />
+        <Card3D card={warPlayerCard} position={[-0.9, 0.03, 1.9]} rotationY={0} delay={0.2} flat={flat} />
       )}
       {warDealerCard && (
-        <Card3D card={warDealerCard} position={[0.9, 0.03, -0.2]} rotationY={Math.PI} delay={0.3} />
+        <Card3D card={warDealerCard} position={[0.9, 0.03, -0.2]} rotationY={Math.PI} delay={0.3} flat={flat} />
       )}
     </>
   );

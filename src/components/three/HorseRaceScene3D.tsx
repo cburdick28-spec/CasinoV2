@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, type ReactNode } from "react";
+import { useFrame } from "@react-three/fiber";
+import type { Group } from "three";
 
 const PALETTE = ["#ffd54a", "#60a5fa", "#ff5470", "#34d399", "#c084fc", "#fb923c", "#f472b6", "#38bdf8"];
 
@@ -21,6 +23,22 @@ function HorseModel({ color, highlight, leading }: { color: string; highlight: b
   );
 }
 
+/** One lane's horse. With `smooth` the horse glides toward each new race step instead of jumping. */
+function Lane({ x, z, smooth, children }: { x: number; z: number; smooth: boolean; children: ReactNode }) {
+  const ref = useRef<Group>(null);
+  useFrame((_, delta) => {
+    const g = ref.current;
+    if (!g || !smooth) return;
+    // Snap back instantly for a fresh race, glide forward otherwise.
+    g.position.x = x < g.position.x ? x : g.position.x + (x - g.position.x) * Math.min(1, delta * 9);
+  });
+  return (
+    <group ref={ref} position={[smooth ? 0 : x, 0, z]}>
+      {children}
+    </group>
+  );
+}
+
 /**
  * Straight 3D track: one lane per horse, each horse's x position driven
  * directly by the real race-progress array the page already animates
@@ -31,11 +49,13 @@ export default function HorseRaceScene3D({
   positions,
   trackLength,
   selected,
+  smooth = false,
 }: {
   horses: { name: string }[];
   positions: number[];
   trackLength: number;
   selected: number;
+  smooth?: boolean;
 }) {
   const trackWorldLength = 5;
   const laneGap = 0.5;
@@ -83,9 +103,9 @@ export default function HorseRaceScene3D({
         const z = i * laneGap - offsetZ;
         const leading = pos > 0 && pos === maxPos;
         return (
-          <group key={h.name} position={[x, 0, z]}>
+          <Lane key={h.name} x={x} z={z} smooth={smooth}>
             <HorseModel color={PALETTE[i % PALETTE.length]} highlight={i === selected} leading={leading} />
-          </group>
+          </Lane>
         );
       })}
     </group>

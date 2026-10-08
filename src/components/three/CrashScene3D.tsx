@@ -20,6 +20,7 @@ export default function CrashScene3D({
   multiplier,
   crashed,
   cashedOutAt,
+  pad = true,
 }: {
   /** Round is currently live (between bet and crash/cashout). */
   active: boolean;
@@ -29,6 +30,8 @@ export default function CrashScene3D({
   crashed: number | null;
   /** The real multiplier the player cashed out at, else null. */
   cashedOutAt: number | null;
+  /** Draw the launch pad (default). The in-world station already has its own. */
+  pad?: boolean;
 }) {
   const rocketRef = useRef<THREE.Group>(null);
   const tiltRef = useRef(0);
@@ -80,10 +83,12 @@ export default function CrashScene3D({
   return (
     <group>
       {/* launch pad */}
-      <mesh position={[0, -0.05, 0]} receiveShadow>
-        <cylinderGeometry args={[1.1, 1.1, 0.15, 28]} />
-        <meshStandardMaterial color="#1a1030" />
-      </mesh>
+      {pad && (
+        <mesh position={[0, -0.05, 0]} receiveShadow>
+          <cylinderGeometry args={[1.1, 1.1, 0.15, 28]} />
+          <meshStandardMaterial color="#1a1030" />
+        </mesh>
+      )}
 
       {/* climb trail, height tied to the real multiplier */}
       {active && crashed === null && cashedOutAt === null && (

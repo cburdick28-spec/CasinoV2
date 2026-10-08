@@ -47,6 +47,9 @@ export default function WheelScene3D({
   useFrame(({ clock }, delta) => {
     const s = state.current;
 
+    // A new spin starts with no result; forget the last one so the same slice twice in a row still tweens.
+    if (winningIndex === null) s.lastIndex = null;
+
     if (winningIndex !== null && winningIndex !== s.lastIndex) {
       s.lastIndex = winningIndex;
       const extraTurns = 5;

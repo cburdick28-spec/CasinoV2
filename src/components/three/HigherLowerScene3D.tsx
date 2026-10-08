@@ -11,15 +11,21 @@ import type { Card } from "@/lib/types";
 export default function HigherLowerScene3D({
   currentCard,
   nextCard,
+  felt = true,
+  flat = false,
 }: {
   currentCard: Card | null;
   nextCard: Card | null;
+  /** Draw the scene's own felt disc (off when a station table supplies the felt). */
+  felt?: boolean;
+  /** Lay the cards flat on the table (for a seated view) instead of standing upright. */
+  flat?: boolean;
 }) {
   return (
     <>
-      <FeltTable3D color="#1b2a4a" radius={2.2} />
-      <Card3D card={currentCard} position={[-0.55, 0.02, 0.2]} delay={0} />
-      <Card3D card={nextCard} position={[0.55, 0.02, 0.2]} delay={0.15} />
+      {felt && <FeltTable3D color="#1b2a4a" radius={2.2} />}
+      <Card3D card={currentCard} position={[-0.55, 0.02, 0.2]} delay={0} flat={flat} />
+      <Card3D card={nextCard} position={[0.55, 0.02, 0.2]} delay={0.15} flat={flat} />
     </>
   );
 }

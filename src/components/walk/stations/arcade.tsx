@@ -21,6 +21,7 @@ import {
 import { C, Kit, KitMeshes, kitCache, lighten, mats, railOval, rand, shade } from "./kit";
 import { Halo, Spin } from "./common";
 import { tableOval } from "./tables";
+import { useSeated } from "../games/bridge";
 
 const P = Math.PI;
 const dummy = new Object3D();
@@ -100,6 +101,7 @@ const puffMat = new MeshBasicMaterial({ color: "#f6e3c0", transparent: true, opa
 const NP = 8;
 
 export function Crash() {
+  const seated = useSeated("crash"); // the Stage flies the real rocket
   const rocket = useRef<Group>(null);
   const flame = useRef<Group>(null);
   const puffs = useRef<InstancedMesh>(null);
@@ -132,7 +134,7 @@ export function Crash() {
   return (
     <>
       <KitMeshes built={crashBase()} />
-      <group ref={rocket} position={[0, 0.58, 0]}>
+      <group ref={rocket} position={[0, 0.58, 0]} visible={!seated}>
         <KitMeshes built={rocketKit()} />
         <group ref={flame}>
           <mesh geometry={flameGeoO} material={flameOuter} />
@@ -140,7 +142,7 @@ export function Crash() {
         </group>
         <Halo position={[0, -0.25, 0]} size={1.5} color="#ff9a3a" opacity={0.55} />
       </group>
-      <instancedMesh ref={puffs} args={[puffGeo, puffMat, NP]} frustumCulled={false} />
+      <instancedMesh ref={puffs} args={[puffGeo, puffMat, NP]} frustumCulled={false} visible={!seated} />
     </>
   );
 }
@@ -195,6 +197,7 @@ const beamGeo = new ConeGeometry(0.95, 2.7, 28, 1, true);
 const beamMat = new MeshBasicMaterial({ color: new Color("#ffc4f0").multiplyScalar(1.1), transparent: true, opacity: 0.09, blending: AdditiveBlending, depthWrite: false, side: DoubleSide, toneMapped: false });
 
 export function Limbo() {
+  const seated = useSeated("limbo"); // the Stage draws the real track, target ring and rocket
   const bar = useRef<Group>(null);
   const fig = useRef<Group>(null);
   useFrame(({ clock }) => {
@@ -211,11 +214,11 @@ export function Limbo() {
     <>
       <KitMeshes built={limboBase()} />
       <mesh geometry={beamGeo} material={beamMat} position={[0, 1.5, 0]} />
-      <group ref={bar} position={[0, 1.2, 0]}>
+      <group ref={bar} position={[0, 1.2, 0]} visible={!seated}>
         <KitMeshes built={limboBar()} />
         <Halo position={[0, 0, 0.05]} size={1.4} color="#ff7eb6" opacity={0.25} />
       </group>
-      <group ref={fig} position={[0, 0.15, 0.1]}>
+      <group ref={fig} position={[0, 0.15, 0.1]} visible={!seated}>
         <KitMeshes built={limboFigure()} />
       </group>
     </>
@@ -277,6 +280,7 @@ const bombKit = () =>
   });
 
 export function Mines() {
+  const seated = useSeated("mines");
   const gems = useRef<InstancedMesh>(null);
   const spark = useRef<Group>(null);
   const bombG = useRef<Group>(null);
@@ -312,11 +316,11 @@ export function Mines() {
   return (
     <>
       <KitMeshes built={minesBase()} />
-      <group position={[0, 1.1, 0.12]} rotation={[0.36, 0, 0]}>
+      <group position={[0, 1.1, 0.12]} rotation={[0.36, 0, 0]} visible={!seated}>
         <KitMeshes built={minesConsole()} />
         <instancedMesh ref={gems} args={[gemA.glow, mats.glow, 3]} frustumCulled={false} />
       </group>
-      <group ref={bombG} position={[0, 1.62, -0.78]}>
+      <group ref={bombG} position={[0, 1.62, -0.78]} visible={!seated}>
         <KitMeshes built={bombKit()} />
         <group ref={spark} position={[-0.03, 0.62, 0]}>
           <Halo position={[0, 0, 0]} size={0.6} color="#ffd24a" opacity={0.9} />
@@ -391,6 +395,7 @@ const shadowGeo = new CircleGeometry(0.45, 24).rotateX(-P / 2);
 const shadowMat = new MeshBasicMaterial({ color: "#000000", transparent: true, opacity: 0.4, depthWrite: false });
 
 export function CoinFlip() {
+  const seated = useSeated("coinflip"); // the Stage flips the real coin
   const coin = useRef<Group>(null);
   const shadow = useRef<Mesh>(null);
   const halo = useRef<Group>(null);
@@ -418,12 +423,12 @@ export function CoinFlip() {
   return (
     <>
       <KitMeshes built={coinPed()} />
-      <mesh ref={shadow} geometry={shadowGeo} material={shadowMat} position={[0, 1.022, 0]} scale={0.8} />
-      <mesh geometry={beamCyl} material={beamGold} position={[0, 1.8, 0]} />
-      <group ref={coin} position={[0, 1.5, 0]}>
+      <mesh ref={shadow} geometry={shadowGeo} material={shadowMat} position={[0, 1.022, 0]} scale={0.8} visible={!seated} />
+      <mesh geometry={beamCyl} material={beamGold} position={[0, 1.8, 0]} visible={!seated} />
+      <group ref={coin} position={[0, 1.5, 0]} visible={!seated}>
         <KitMeshes built={coinKit()} />
       </group>
-      <group ref={halo} position={[0, 1.5, 0]}>
+      <group ref={halo} position={[0, 1.5, 0]} visible={!seated}>
         <Halo position={[0, 0, 0]} size={2.2} color="#ffd24a" opacity={0.4} />
       </group>
     </>
@@ -502,6 +507,7 @@ function makePaths() {
 const PATHS = makePaths();
 
 export function Plinko() {
+  const seated = useSeated("plinko"); // the Stage drops the real balls
   const discs = useRef<InstancedMesh>(null);
   useEffect(() => {
     const m = discs.current;
@@ -538,9 +544,11 @@ export function Plinko() {
   return (
     <>
       <KitMeshes built={plinkoKit()} />
-      <instancedMesh ref={discs} args={[discGeo, discMat, ND]} frustumCulled={false} />
-      <Halo position={[0, 3.22, 0.05]} size={0.8} color="#ffe27a" opacity={0.7} />
-      <Halo position={[0, 0.3, 0.2]} size={2.4} color="#ffc94a" opacity={0.18} />
+      <instancedMesh ref={discs} args={[discGeo, discMat, ND]} frustumCulled={false} visible={!seated} />
+      <group visible={!seated}>
+        <Halo position={[0, 3.22, 0.05]} size={0.8} color="#ffe27a" opacity={0.7} />
+        <Halo position={[0, 0.3, 0.2]} size={2.4} color="#ffc94a" opacity={0.18} />
+      </group>
     </>
   );
 }
@@ -548,9 +556,15 @@ export function Plinko() {
 /* ------------------------------ HORSE RACING ------------------------------ */
 
 const TRACK_Y = 0.9;
-const horseTable = () =>
-  kitCache("horse-table", (k) => {
+/** `bare` (while seated): just the table, the in-world Stage draws its own track on top. */
+const horseTable = (bare = false) =>
+  kitCache(bare ? "horse-table-bare" : "horse-table", (k) => {
     tableOval(k, 1.22, 0.86, "#d9a066", C.paper, C.gold, "#1d6a62");
+    if (!bare) horseDecor(k);
+    horseBunting(k);
+  });
+const horseDecor = (k: Kit) => {
+  {
     // infield
     k.cyl(1, 1, 0.012, "#58b558", [0, 0.88, 0], { scale: [0.62, 1, 0.34], seg: 32 });
     k.cyl(1, 1, 0.006, "#58c8d8", [0.2, 0.888, 0.03], { scale: [0.2, 1, 0.1], seg: 20 });
@@ -574,6 +588,10 @@ const horseTable = () =>
     // finish flag pole
     k.cyl(0.012, 0.012, 0.8, C.paper, [-0.07, 1.3, 0.34], { seg: 6 });
     for (let i = 0; i < 5; i++) for (let j = 0; j < 4; j++) k.box(0.07, 0.07, 0.008, (i + j) % 2 ? C.paper : C.ink, [-0.07 + 0.035 + i * 0.07, 1.64 - j * 0.07, 0.34]);
+  }
+};
+const horseBunting = (k: Kit) => {
+  {
     // bunting
     for (const s of [-1, 1]) k.cyl(0.02, 0.02, 1.0, C.woodDark, [s * 1.0, 1.4, -0.7], { seg: 8 });
     const cols = [C.red, C.gold, C.cyan, C.pink, C.lime, C.orange];
@@ -583,7 +601,8 @@ const horseTable = () =>
       k.cone(0.06, 0.13, cols[i % 6], [x, y - 0.06, -0.7], { rot: [0, 0, P], seg: 3, scale: [1, 1, 0.3] });
     }
     k.box(2.0, 0.012, 0.012, C.paper, [0, 1.8, -0.7], { rot: [0, 0, 0] });
-  });
+  }
+};
 
 const horseGeo = (() => {
   const k = new Kit();
@@ -621,6 +640,7 @@ const HORSE_TINTS = ["#c98a5a", "#7a4a32", "#e8c27a", "#9a9aa8"];
 const SILKS = ["#e0483b", "#3d6fe0", "#ffc94a", "#2fb7a6"];
 
 export function HorseRacing() {
+  const seated = useSeated("horse-racing");
   const horses = useRef<InstancedMesh>(null);
   const jockeys = useRef<InstancedMesh>(null);
   useEffect(() => {
@@ -664,10 +684,10 @@ export function HorseRacing() {
   });
   return (
     <>
-      <KitMeshes built={horseTable()} />
-      <instancedMesh ref={horses} args={[horseGeo, horseMat, NH]} frustumCulled={false} />
-      <instancedMesh ref={jockeys} args={[jockeyGeo, horseMat, NH]} frustumCulled={false} />
-      <Halo position={[0, 1.19, 0.05]} size={1.0} color="#ffd24a" opacity={0.4} />
+      <KitMeshes built={horseTable(seated)} />
+      <instancedMesh ref={horses} args={[horseGeo, horseMat, NH]} frustumCulled={false} visible={!seated} />
+      <instancedMesh ref={jockeys} args={[jockeyGeo, horseMat, NH]} frustumCulled={false} visible={!seated} />
+      {!seated && <Halo position={[0, 1.19, 0.05]} size={1.0} color="#ffd24a" opacity={0.4} />}
     </>
   );
 }
