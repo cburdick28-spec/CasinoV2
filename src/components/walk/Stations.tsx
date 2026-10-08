@@ -40,7 +40,7 @@ export default function Stations() {
   return (
     <group>
       <StationsClock />
-      <hemisphereLight args={["#fff1d6", "#6a4a5a", 0.9]} />
+      <hemisphereLight args={["#fff1d6", "#4a3040", 0.5]} />
       {STATIONS.map((s) => {
         const e = REGISTRY[s.slug];
         if (!e) return null;

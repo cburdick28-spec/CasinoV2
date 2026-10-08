@@ -21,13 +21,13 @@ const ALL_PLANTS = [...PLANTS.lobby, ...PLANTS.tables, ...PLANTS.slots, ...PLANT
 export default function Rooms() {
   return (
     <>
-      <hemisphereLight args={["#ffe9cf", "#5a3040", 1.15]} />
-      <directionalLight position={[6, 14, 8]} intensity={0.55} color="#fff0d8" />
-      <pointLight position={[0, 5.2, -1]} color="#ffd9a0" intensity={80} distance={26} decay={1.6} />
-      <pointLight position={[0, 4.8, -16]} color="#ffe2b0" intensity={120} distance={26} decay={1.6} />
-      <pointLight position={[0, 4.8, -28]} color="#ffe2b0" intensity={110} distance={26} decay={1.6} />
-      <pointLight position={[-24, 4.0, 0]} color="#ffb4ea" intensity={130} distance={28} decay={1.5} />
-      <pointLight position={[24, 4.0, 0]} color="#b4f4ff" intensity={130} distance={28} decay={1.5} />
+      <hemisphereLight args={["#ffe9cf", "#3a2030", 0.6]} />
+      <directionalLight position={[6, 14, 8]} intensity={1.25} color="#ffe2b8" />
+      <pointLight position={[0, 5.2, -1]} color="#ffd9a0" intensity={150} distance={26} decay={1.6} />
+      <pointLight position={[0, 4.8, -16]} color="#ffe2b0" intensity={160} distance={26} decay={1.6} />
+      <pointLight position={[0, 4.8, -28]} color="#ffe2b0" intensity={150} distance={26} decay={1.6} />
+      <pointLight position={[-24, 4.0, 0]} color="#ffb4ea" intensity={95} distance={28} decay={1.5} />
+      <pointLight position={[24, 4.0, 0]} color="#b4f4ff" intensity={85} distance={28} decay={1.5} />
       <Shell />
       <Lobby />
       <Tables />

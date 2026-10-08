@@ -53,8 +53,8 @@ export default function CasinoWalk() {
       >
         <color attach="background" args={[BG]} />
         <fog attach="fog" args={[BG, 18, 60]} />
-        <ambientLight intensity={0.55} color="#ffe6c8" />
-        <hemisphereLight args={["#ffd9b0", "#3a2230", 0.7]} />
+        <ambientLight intensity={0.22} color="#cfd8ff" />
+        <hemisphereLight args={["#ffd9b0", "#2a1822", 0.3]} />
         <Suspense fallback={null}>
           <Rooms />
           <Stations />
