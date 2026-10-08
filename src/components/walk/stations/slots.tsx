@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import { Color, Group, InstancedMesh, MeshStandardMaterial, Object3D, SphereGeometry } from "three";
 import { C, Kit, KitMeshes, type Layer, kitCache, lighten, pip, rand, shade } from "./kit";
 import { Halo, Spin } from "./common";
+import { SlotMachineReels, seven } from "./SlotMachineReels";
 
 const P = Math.PI;
 
@@ -17,34 +18,6 @@ function stool(k: Kit, x: number, z: number, cushion: string) {
   k.sph(0.19, cushion, [x, 0.53, z], { scale: [1, 0.35, 1], seg: 16 });
   k.tor(0.19, 0.012, C.gold, [x, 0.46, z], { rot: [P / 2, 0, 0], seg: 20 });
 }
-
-function seven(k: Kit, lite: boolean, x: number, y: number, z: number, s: number, color: string) {
-  const o = lite ? { layer: "body" as const } : { layer: "glow" as const, i: 1.9 };
-  k.box(0.1 * s, 0.028 * s, 0.02, color, [x, y + 0.075 * s, z], { ...o, r: 0.008 });
-  k.box(0.03 * s, 0.17 * s, 0.02, color, [x + 0.0 * s, y - 0.005 * s, z], { ...o, r: 0.008, rot: [0, 0, -0.5] });
-}
-
-const REEL_COLORS = ["#e0483b", "#ffe27a", "#ff4a4a", "#2a1a2e", "#ffc94a", "#8b5cf6", "#ff7eb6", "#2fb7a6"];
-const reelKit = () =>
-  kitCache("reel", (k) => {
-    k.cyl(0.16, 0.16, 0.19, C.cream, [0, 0, 0], { rot: [0, 0, P / 2], seg: 24 });
-    for (let j = 0; j < 8; j++) {
-      const a = (j / 8) * P * 2;
-      k.at([0, Math.sin(a) * 0.162, Math.cos(a) * 0.162], [-a, 0, 0], null, () => {
-        k.box(0.16, 0.115, 0.03, C.paper, [0, 0, 0], { r: 0.008 });
-        if (j % 4 === 2) {
-          seven(k, true, 0, 0, 0.018, 0.9, "#e0483b");
-        } else if (j % 4 === 0) {
-          k.sph(0.028, REEL_COLORS[j], [-0.025, -0.012, 0.02], { seg: 8, scale: [1, 1, 0.5] });
-          k.sph(0.028, REEL_COLORS[j], [0.025, -0.012, 0.02], { seg: 8, scale: [1, 1, 0.5] });
-          k.box(0.008, 0.05, 0.01, C.green, [0, 0.03, 0.02], { rot: [0, 0, 0.2] });
-        } else {
-          k.box(0.1, 0.04, 0.012, REEL_COLORS[j], [0, 0, 0.02], { r: 0.008 });
-        }
-      });
-    }
-    for (const s of [-1, 1]) k.cyl(0.165, 0.165, 0.012, C.goldDeep, [s * 0.098, 0, 0], { rot: [0, 0, P / 2], seg: 24 });
-  });
 
 /** A whole slot machine, front toward +z. Machine height about 2.4m to the topper. */
 function slotMachine(k: Kit, body: string, trim: string, staticReels: boolean, lite = false) {
@@ -124,47 +97,12 @@ function slotMachine(k: Kit, body: string, trim: string, staticReels: boolean, l
 
 const slotMain = () => kitCache("slot-main", (k) => { slotMachine(k, "#d8403a", C.gold, false); stool(k, 0, 0.98, C.pink); });
 const slotSide = (key: string, body: string) => kitCache("slot-side-" + key, (k) => slotMachine(k, body, C.gold, true, true));
-const leverKit = () =>
-  kitCache("lever", (k) => {
-    k.cyl(0.022, 0.022, 0.5, C.steel, [0, 0.25, 0], { seg: 8 });
-    k.sph(0.07, C.red, [0, 0.54, 0], { seg: 14 });
-  });
-
-const EASE = (u: number) => 1 - Math.pow(1 - u, 3);
-const REEL_N = [P * 2 * 3 + (P / 4) * 3, P * 2 * 4 + (P / 4) * 2, P * 2 * 5 + (P / 4) * 5];
-
 export function Slots() {
-  const reels = useRef<Group>(null);
-  const lever = useRef<Group>(null);
-  const reel = useMemo(() => reelKit(), []);
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime;
-    const PER = 6.5;
-    const cyc = Math.floor(t / PER);
-    const local = t - cyc * PER;
-    for (let i = 0; i < 3; i++) {
-      const u = Math.min(1, Math.max(0, (local - 0.45) / (2.0 + i * 0.7)));
-      const g = reels.current?.children[i];
-      if (g) g.rotation.x = (cyc + EASE(u)) * REEL_N[i];
-    }
-    if (lever.current) {
-      const l = local < 0.9 ? Math.sin((local / 0.9) * P) : 0;
-      lever.current.rotation.x = l * 1.15 - 0.05;
-    }
-  });
   return (
     <>
       <KitMeshes built={slotMain()} />
-      <group ref={reels}>
-        {[-0.205, 0, 0.205].map((x) => (
-          <group key={x} position={[x, 1.545, 0.1]}>
-            <KitMeshes built={reel} />
-          </group>
-        ))}
-      </group>
-      <group ref={lever} position={[0.5, 1.04, 0]}>
-        <KitMeshes built={leverKit()} />
-      </group>
+      {/* three physical reels + lever, driven by the slot state machine (slotMachines.ts) */}
+      <SlotMachineReels machineId="slots" />
       <Halo position={[0, 2.5, 0.05]} size={0.9} color="#ff6a5a" opacity={0.6} />
       <group position={[-0.74, 0, -0.14]} rotation={[0, 0.45, 0]} scale={0.76}>
         <KitMeshes built={slotSide("v", "#7a4fd6")} />

@@ -2,7 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { EYE_HEIGHT, roomAt } from "./world";
+import { Euler, Matrix4, Quaternion, Vector3 } from "three";
+import { EYE_HEIGHT, roomAt, stationBySlug } from "./world";
+import { IN_WORLD_GAMES, getFocus, leaveFocus } from "./inworld";
 import { moveCircle, nearestStation, nearestValidPosition } from "./collision";
 import { getWalkState, patchWalkState } from "./state";
 
@@ -52,9 +54,19 @@ function typingTarget(): boolean {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
 }
 
+// Scratch objects for the camera glide into an in-world game (module level: never allocated per frame).
+const _eye = new Vector3();
+const _tgt = new Vector3();
+const _up = new Vector3(0, 1, 0);
+const _m = new Matrix4();
+const _qPlayer = new Quaternion();
+const _qFocus = new Quaternion();
+const _euler = new Euler(0, 0, 0, "YXZ");
+const FOCUS_RATE = 5.5; // 1/s, how quickly the camera glides into / out of the machine
+
 const clampPitch = (p: number) => Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, p));
 
-export default function PlayerController({ onInteract }: { onInteract: (slug: string) => void }) {
+export default function PlayerController({ onInteract }: { onInteract: (slug: string, openFullGame?: boolean) => void }) {
   const getThree = useThree((s) => s.get);
 
   const onInteractRef = useRef(onInteract);
@@ -80,6 +92,8 @@ export default function PlayerController({ onInteract }: { onInteract: (slug: st
     wz: NaN,
     wyaw: NaN,
     wpitch: NaN,
+    focusMix: 0,
+    lastFocus: null as { x: number; z: number; yaw: number; eye: [number, number, number]; target: [number, number, number] } | null,
     keys: { f: false, b: false, l: false, r: false, sprint: false },
     reducedMotion: false,
     locked: false,
@@ -123,6 +137,15 @@ export default function PlayerController({ onInteract }: { onInteract: (slug: st
     const onKeyDown = (e: KeyboardEvent) => {
       if (typingTarget()) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const focused = getFocus();
+      if (focused) {
+        // Playing a machine in the world: Enter opens the full game page, Esc or any walk key steps away.
+        if (e.code === "Enter" && !e.repeat) {
+          onInteractRef.current(focused, true);
+          return;
+        }
+        if (e.code === "Escape" || MOVE_KEYS[e.code]) leaveFocus();
+      }
       const dir = MOVE_KEYS[e.code];
       if (dir) {
         s.keys[dir] = true;
@@ -145,6 +168,7 @@ export default function PlayerController({ onInteract }: { onInteract: (slug: st
     };
 
     const look = (dxPix: number, dyPix: number, speed: number) => {
+      if (getFocus()) return;
       s.yaw -= dxPix * speed;
       s.pitch = clampPitch(s.pitch - dyPix * speed);
     };
@@ -317,8 +341,11 @@ export default function PlayerController({ onInteract }: { onInteract: (slug: st
 
     // Input vector in player space: x strafe right, y forward.
     const k = s.keys;
-    let ix = (k.r ? 1 : 0) - (k.l ? 1 : 0) + w.touchMove.x;
-    let iy = (k.f ? 1 : 0) - (k.b ? 1 : 0) + w.touchMove.y;
+    // Touch joystick steps away from an in-world game; while framed on a machine the player stands still.
+    if (getFocus() && (Math.abs(w.touchMove.x) > 0.2 || Math.abs(w.touchMove.y) > 0.2)) leaveFocus();
+    const focusSlug = getFocus();
+    let ix = focusSlug ? 0 : (k.r ? 1 : 0) - (k.l ? 1 : 0) + w.touchMove.x;
+    let iy = focusSlug ? 0 : (k.f ? 1 : 0) - (k.b ? 1 : 0) + w.touchMove.y;
     const mag = Math.hypot(ix, iy);
     if (mag > 1) {
       ix /= mag;
@@ -369,6 +396,31 @@ export default function PlayerController({ onInteract }: { onInteract: (slug: st
     const cam = three.camera;
     cam.position.set(s.x, EYE_HEIGHT + bob, s.z);
     cam.rotation.set(s.pitch, s.yaw + Math.PI, 0);
+
+    // Glide into (or back out of) the framed shot of an in-world game. The mix is a damped
+    // approach, so it is frame-rate independent; the player's own pose is never modified.
+    const fg = focusSlug ? IN_WORLD_GAMES[focusSlug] : undefined;
+    const st = focusSlug ? stationBySlug(focusSlug) : undefined;
+    if (fg && st) s.lastFocus = { x: st.position[0], z: st.position[1], yaw: st.yaw, eye: fg.eye, target: fg.target };
+    s.focusMix += ((fg && st ? 1 : 0) - s.focusMix) * (1 - Math.exp(-FOCUS_RATE * dt));
+    if (s.focusMix < 0.001) s.focusMix = 0;
+    if (s.focusMix > 0 && s.lastFocus) {
+      const ref = s.lastFocus;
+      const sin = Math.sin(ref.yaw);
+      const cos = Math.cos(ref.yaw);
+      // station local (x, z) to world: rotate about y by the station yaw
+      const toWorld = (v: [number, number, number], out: Vector3) =>
+        out.set(ref.x + v[0] * cos + v[2] * sin, v[1], ref.z - v[0] * sin + v[2] * cos);
+      toWorld(ref.eye, _eye);
+      toWorld(ref.target, _tgt);
+      _m.lookAt(_eye, _tgt, _up);
+      _qFocus.setFromRotationMatrix(_m);
+      _euler.set(s.pitch, s.yaw + Math.PI, 0);
+      _qPlayer.setFromEuler(_euler);
+      const e = s.focusMix * s.focusMix * (3 - 2 * s.focusMix); // smoothstep
+      cam.position.lerp(_eye, e);
+      cam.quaternion.copy(_qPlayer).slerp(_qFocus, e);
+    }
 
     // Publish.
     const room = roomAt(s.x, s.z);

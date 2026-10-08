@@ -11,6 +11,8 @@ import PlayerController from "./PlayerController";
 import Rooms from "./Rooms";
 import Stations from "./Stations";
 import { SPAWN, EYE_HEIGHT } from "./world";
+import { enterFocus, isInWorldGame } from "./inworld";
+import { getSlotMachine, requestSpin } from "./slotMachines";
 
 const BG = "#1a0f1c";
 
@@ -21,7 +23,14 @@ export default function CasinoWalk() {
   const [leaving, setLeaving] = useState<string | null>(null);
 
   const onInteract = useCallback(
-    (slug: string) => {
+    (slug: string, openFullGame = false) => {
+      // Slot machines play right here in the 3D world: frame the reels and pull the lever.
+      if (!openFullGame && isInWorldGame(slug)) {
+        enterFocus(slug);
+        const machine = getSlotMachine(slug);
+        if (machine) requestSpin(machine);
+        return;
+      }
       if (busy.current) return;
       busy.current = true;
       const game = GAMES.find((g) => g.slug === slug);

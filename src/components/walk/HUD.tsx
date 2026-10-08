@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { useFocus, isInWorldGame } from "./inworld";
 import { GAMES } from "@/lib/gameList";
 import { useUser } from "@/lib/UserContext";
 import Minimap from "./Minimap";
@@ -183,7 +184,7 @@ export default function HUD({
   onInteract,
 }: {
   containerRef: RefObject<HTMLDivElement | null>;
-  onInteract: (slug: string) => void;
+  onInteract: (slug: string, openFullGame?: boolean) => void;
 }) {
   const { user } = useUser();
   const touch = useSyncExternalStore(subscribeCoarse, () => window.matchMedia("(pointer: coarse)").matches, () => false);
@@ -232,6 +233,9 @@ export default function HUD({
   };
 
   const game = near ? GAMES.find((g) => g.slug === near) : undefined;
+  const focus = useFocus();
+  const inWorld = isInWorldGame(game?.slug);
+  const framed = inWorld && focus === game?.slug;
   const showHelp = pinned || !moved;
   const showStart = !touch && !engaged && !moved && !pinned;
   const showResume = !touch && !engaged && moved && !pinned;
@@ -347,14 +351,30 @@ export default function HUD({
 
       {/* interaction prompt */}
       {game && (
-        <div className="absolute left-1/2 flex flex-col items-center gap-2" style={{ top: touch ? "40%" : "62%", transform: "translateX(-50%)", zIndex: 20 }}>
+        <div className="absolute left-1/2 flex flex-col items-center gap-2" style={{ top: framed ? (touch ? "58%" : "90%") : touch ? "40%" : "62%", transform: "translateX(-50%)", zIndex: 20, whiteSpace: "nowrap" }}>
           <div style={{ ...CARD, borderRadius: 999, padding: "9px 18px", display: touch ? "none" : "flex", alignItems: "center", gap: 10, border: `1px solid ${GOLD}` }}>
             <span style={{ fontSize: 22 }}>{game.emoji}</span>
-            {!touch && <span>Press</span>}
-            {!touch && <Key big>E</Key>}
-            <span>
-              {touch ? "Play" : "to play"} <b style={{ color: GOLD }}>{game.name}</b>
-            </span>
+            {framed ? (
+              touch ? (
+                <span>Walk away to leave</span>
+              ) : (
+                <>
+                  <Key big>E</Key>
+                  <span>spin again</span>
+                  <Key big>Enter</Key>
+                  <span>full game</span>
+                  <span style={{ opacity: 0.75 }}>· move to leave</span>
+                </>
+              )
+            ) : (
+              <>
+                {!touch && <span>Press</span>}
+                {!touch && <Key big>E</Key>}
+                <span>
+                  {touch ? (inWorld ? "Spin" : "Play") : inWorld ? "to spin" : "to play"} <b style={{ color: GOLD }}>{game.name}</b>
+                </span>
+              </>
+            )}
           </div>
           {touch && (
             <button
@@ -371,7 +391,17 @@ export default function HUD({
                 boxShadow: "0 5px 0 #b8860b, 0 8px 18px rgba(0,0,0,0.5)",
               }}
             >
-              Play {game.name}
+              {inWorld ? (framed ? "Spin again" : `Spin ${game.name}`) : `Play ${game.name}`}
+            </button>
+          )}
+          {touch && framed && (
+            <button
+              type="button"
+              onClick={() => onInteract(game.slug, true)}
+              className="font-bold"
+              style={{ pointerEvents: "auto", padding: "8px 22px", fontSize: 14, borderRadius: 999, color: "#fbefd5", background: "rgba(30,16,40,0.8)", border: `1px solid ${GOLD}` }}
+            >
+              Open full game
             </button>
           )}
         </div>
