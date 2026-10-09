@@ -26,12 +26,15 @@ export default function BlackjackScene3D({
   hands,
   activeHandIndex,
   chips = true,
+  flat = false,
 }: {
   dealerCards: (Card | null)[];
   hands: Card[][];
   activeHandIndex?: number;
   /** The two decorative chip stacks beside the table (the walkable casino has its own on the table). */
   chips?: boolean;
+  /** Lay the cards face-up on the felt (seated view) instead of standing upright. */
+  flat?: boolean;
 }) {
   const handCount = hands.length || 1;
   const spacingX = handCount > 1 ? 1.8 : 0;
@@ -41,7 +44,7 @@ export default function BlackjackScene3D({
       <FeltTable3D color="#14532d" radius={2.6} />
 
       {/* Dealer's hand, further back */}
-      <CardHand3D cards={dealerCards} center={[0, 0.02, -1.5]} spacing={0.48} />
+      <CardHand3D cards={dealerCards} center={[0, 0.02, -1.5]} spacing={0.48} flat={flat} />
 
       {/* Player hand(s), fanned at the front; split hands sit side by side */}
       {hands.map((cards, idx) => {
@@ -53,6 +56,7 @@ export default function BlackjackScene3D({
             cards={cards}
             center={[x, 0.02, active ? 1.3 : 1.1]}
             spacing={0.44}
+            flat={flat}
           />
         );
       })}

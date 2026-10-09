@@ -149,6 +149,7 @@ export function Stage() {
       <BlackjackScene3D
         key={view.seq}
         chips={false}
+        flat
         dealerCards={st.dealer.length ? st.dealer : [null]}
         hands={st.hands.map((h) => h.cards)}
         activeHandIndex={st.active ? st.current : undefined}

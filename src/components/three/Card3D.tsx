@@ -232,7 +232,7 @@ export function CardHand3D({
           <Card3D
             key={i}
             card={faceDown ? null : c}
-            position={[x, center[1] + i * 0.004, center[2]]}
+            position={[x, center[1] + i * 0.004, center[2] + (flat ? 0 : i * 0.02)]}
             delay={i * 0.12}
             flat={flat}
           />
