@@ -7,6 +7,7 @@ import GameBarView from "./GameBarView";
 import { GAMES } from "@/lib/gameList";
 import { useUser } from "@/lib/UserContext";
 import Minimap from "./Minimap";
+import { usePlayers } from "./online/presence";
 import { getWalkState, patchWalkState, useWalkState } from "./state";
 import { ROOMS, SPAWN, type RoomId } from "./world";
 
@@ -184,11 +185,14 @@ function LookPad() {
 export default function HUD({
   containerRef,
   onInteract,
+  onAvatar,
 }: {
   containerRef: RefObject<HTMLDivElement | null>;
   onInteract: (slug: string) => void;
+  onAvatar?: () => void;
 }) {
   const { user } = useUser();
+  const online = usePlayers().length;
   const touch = useSyncExternalStore(subscribeCoarse, () => window.matchMedia("(pointer: coarse)").matches, () => false);
   const debug = useSyncExternalStore(noopSubscribe, () => new URLSearchParams(window.location.search).has("debug"), () => false);
   const walk = useWalkState((s) => s);
@@ -290,6 +294,17 @@ export default function HUD({
         <button type="button" style={iconBtn} onClick={() => setPinned((p) => !p)} aria-label="Controls help" title="Controls">
           ?
         </button>
+        {user && onAvatar && (
+          <button type="button" style={{ ...iconBtn, width: "auto", padding: "0 12px", fontSize: 12, fontWeight: 700 }} onClick={onAvatar} aria-label="Customize avatar" title="Customize avatar">
+            {"\u{1F9D1}"} Avatar
+          </button>
+        )}
+        {user && (
+          <span style={{ ...CARD, borderRadius: 18, height: 36, padding: "0 12px", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }} title="Players in the casino right now">
+            <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: "#3fd07a" }} />
+            {online + 1} online
+          </span>
+        )}
         <button type="button" style={iconBtn} onClick={toggleFs} aria-label="Toggle fullscreen" title="Fullscreen">
           {fs ? "⤡" : "⛶"}
         </button>

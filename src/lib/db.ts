@@ -26,7 +26,7 @@ function normalize<T>(rows: Record<string, unknown>[]): T[] {
 const NUMERIC_COLUMNS = new Set([
   "id", "user_id", "money", "is_dev", "daily_streak", "timeout_until", "created_at",
   "games_played", "games_won", "games_lost", "total_wagered", "total_won", "biggest_win",
-  "bet", "net", "unlocked_at", "c",
+  "bet", "net", "unlocked_at", "c", "updated_at",
 ]);
 
 const SCHEMA = [
@@ -73,6 +73,15 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS global_state (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
+  )`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT NOT NULL DEFAULT ''`,
+  `CREATE TABLE IF NOT EXISTS presence (
+    user_id INTEGER PRIMARY KEY,
+    x DOUBLE PRECISION NOT NULL,
+    z DOUBLE PRECISION NOT NULL,
+    yaw DOUBLE PRECISION NOT NULL,
+    seated TEXT NOT NULL DEFAULT '',
+    updated_at BIGINT NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS chat_messages (
     id SERIAL PRIMARY KEY,

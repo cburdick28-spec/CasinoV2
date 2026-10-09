@@ -15,6 +15,10 @@ import { enterFocus, getFocus } from "./inworld";
 import { dispatchKey } from "./games/bridge";
 import { isInWorldGame } from "./games";
 import { ActiveController, ActiveStage } from "./games/ActiveGame";
+import RemotePlayers from "./online/RemotePlayers";
+import AvatarEditor from "./online/AvatarEditor";
+import { usePresenceSync } from "./online/presence";
+import { useUser } from "@/lib/UserContext";
 
 const BG = "#1a0f1c";
 
@@ -23,6 +27,9 @@ export default function CasinoWalk() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const busy = useRef(false);
   const [leaving, setLeaving] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const { user } = useUser();
+  usePresenceSync(!!user);
   const onInteract = useCallback(
     (slug: string) => {
       // Games are played right here in the 3D world: the first E sits you down, then the game takes the keys.
@@ -69,6 +76,7 @@ export default function CasinoWalk() {
           <Rooms />
           <Stations />
           <ActiveStage />
+          <RemotePlayers />
         </Suspense>
         <PlayerController onInteract={onInteract} />
         <EffectComposer multisampling={0}>
@@ -78,7 +86,8 @@ export default function CasinoWalk() {
       </Canvas>
 
       <ActiveController />
-      <HUD containerRef={wrapRef} onInteract={onInteract} />
+      <HUD containerRef={wrapRef} onInteract={onInteract} onAvatar={() => setEditing(true)} />
+      {editing && <AvatarEditor onClose={() => setEditing(false)} />}
 
       <div
         className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center"
