@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef } from "react";
+import { Suspense, useMemo, useRef } from "react";
+import { Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -11,6 +12,7 @@ const WHEEL_ORDER = [
   7, 28, 12, 35, 3, 26,
 ];
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+import { FONT_URL } from "../walk/stations/common";
 const N = WHEEL_ORDER.length;
 const POCKET_ANGLE = (Math.PI * 2) / N;
 const SPIN_DURATION = 2.5; // seconds — matches the page's post-fetch reveal delay
@@ -100,15 +102,38 @@ export default function RouletteScene3D({
 
     if (wheelRef.current) wheelRef.current.rotation.y = s.wheelAngle;
     if (ballRef.current) {
-      const r = 1.0;
-      const lift = s.tweening || spinning ? 0.09 : 0;
-      ballRef.current.position.set(Math.sin(s.ballAngle) * r, 0.22 + lift, Math.cos(s.ballAngle) * r);
+      // Ball rides the outer track, then drops into the pockets as the spin runs out.
+      const t = s.tweening ? Math.min(1, (clock.getElapsedTime() - s.tweenStart) / SPIN_DURATION) : spinning ? 0 : 1;
+      const drop = THREE.MathUtils.smoothstep(t, 0.55, 0.95);
+      const r = THREE.MathUtils.lerp(1.2, 0.9, drop);
+      const hop = drop > 0 && drop < 1 ? Math.abs(Math.sin(drop * Math.PI * 5)) * 0.05 * (1 - drop) : 0;
+      const y = THREE.MathUtils.lerp(0.2, 0.15, drop) + hop;
+      ballRef.current.position.set(Math.sin(s.ballAngle) * r, y, Math.cos(s.ballAngle) * r);
     }
   });
 
+  const bowl = useMemo(() => {
+    const pts = [
+      [0.0, -0.1], [1.2, -0.1], [1.52, -0.02], [1.58, 0.1], [1.58, 0.26], [1.5, 0.3],
+      [1.42, 0.27], [1.36, 0.2], [1.3, 0.15], [1.12, 0.1], [0.0, 0.1],
+    ].map(([x, y]) => new THREE.Vector2(x, y));
+    return new THREE.LatheGeometry(pts, 96);
+  }, []);
+  const pockets = useMemo(
+    () =>
+      WHEEL_ORDER.map((n, i) => {
+        const a = i * POCKET_ANGLE;
+        const half = POCKET_ANGLE / 2;
+        // RingGeometry lives in XY; rotateX(PI/2) maps angle phi -> world (cos phi, sin phi) on (x, z); we want (sin a, cos a).
+        const geo = new THREE.RingGeometry(0.62, 1.08, 1, 1, Math.PI / 2 - (a + half), POCKET_ANGLE);
+        geo.rotateX(Math.PI / 2);
+        return { n, a, geo };
+      }),
+    [],
+  );
+
   return (
     <group>
-      {/* Table base */}
       {base && (
         <mesh position={[0, -0.08, 0]} receiveShadow castShadow>
           <cylinderGeometry args={[1.55, 1.6, 0.3, 48]} />
@@ -116,40 +141,92 @@ export default function RouletteScene3D({
         </mesh>
       )}
 
+      {/* Static polished wooden bowl with ball track */}
+      <mesh geometry={bowl} position={[0, 0.02, 0]} castShadow receiveShadow>
+        <meshPhysicalMaterial color="#5b2a10" roughness={0.35} clearcoat={1} clearcoatRoughness={0.12} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 0.3, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.5, 0.025, 10, 96]} />
+        <meshStandardMaterial color="#f2c14e" metalness={0.9} roughness={0.2} />
+      </mesh>
+      <mesh position={[0, 0.13, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.12, 0.018, 8, 96]} />
+        <meshStandardMaterial color="#f2c14e" metalness={0.9} roughness={0.2} />
+      </mesh>
+
       {/* Rotating wheel */}
       <group ref={wheelRef} position={[0, 0.1, 0]}>
-        <mesh receiveShadow>
-          <cylinderGeometry args={[1.3, 1.3, 0.14, 48]} />
-          <meshStandardMaterial color="#0d0d1a" roughness={0.5} metalness={0.3} />
+        <mesh>
+          <cylinderGeometry args={[1.12, 1.12, 0.06, 64]} />
+          <meshStandardMaterial color="#1a0f08" roughness={0.5} metalness={0.3} />
         </mesh>
+        {pockets.map(({ n, geo }) => (
+          <mesh key={n} geometry={geo} position={[0, 0.045, 0]} receiveShadow>
+            <meshStandardMaterial color={pocketColor(n)} roughness={0.35} metalness={0.15} side={THREE.DoubleSide} />
+          </mesh>
+        ))}
+        {/* metal frets between pockets */}
         {WHEEL_ORDER.map((n, i) => {
-          const a = i * POCKET_ANGLE;
-          const r = 1.08;
+          const a = (i + 0.5) * POCKET_ANGLE;
+          const rm = 0.85;
           return (
-            <mesh key={n} position={[Math.sin(a) * r, 0.09, Math.cos(a) * r]} rotation={[0, -a, 0]} castShadow>
-              <boxGeometry args={[0.16, 0.12, POCKET_ANGLE * r * 0.85]} />
-              <meshStandardMaterial color={pocketColor(n)} roughness={0.5} />
+            <mesh key={n} position={[Math.sin(a) * rm, 0.065, Math.cos(a) * rm]} rotation={[0, a, 0]}>
+              <boxGeometry args={[0.012, 0.045, 0.46]} />
+              <meshStandardMaterial color="#e8e2d0" metalness={0.95} roughness={0.2} />
             </mesh>
           );
         })}
+        <Suspense fallback={null}>
+          {pockets.map(({ n, a }) => (
+            <group key={n} rotation={[0, a, 0]}>
+              <Text
+                font={FONT_URL}
+                position={[0, 0.072, 0.93]}
+                rotation={[-Math.PI / 2, 0, Math.PI]}
+                fontSize={0.085}
+                anchorX="center"
+                anchorY="middle"
+                color="#ffffff"
+                material-toneMapped={false}
+              >
+                {String(n)}
+              </Text>
+            </group>
+          ))}
+        </Suspense>
+        {/* inner cone + turret */}
         <mesh position={[0, 0.1, 0]}>
-          <cylinderGeometry args={[0.3, 0.32, 0.22, 24]} />
-          <meshStandardMaterial color="#f2c14e" metalness={0.7} roughness={0.25} />
+          <cylinderGeometry args={[0.18, 0.62, 0.14, 48]} />
+          <meshPhysicalMaterial color="#6b3414" roughness={0.3} clearcoat={1} />
         </mesh>
+        <mesh position={[0, 0.2, 0]}>
+          <cylinderGeometry args={[0.05, 0.12, 0.12, 24]} />
+          <meshStandardMaterial color="#f2c14e" metalness={0.95} roughness={0.18} />
+        </mesh>
+        <mesh position={[0, 0.3, 0]}>
+          <sphereGeometry args={[0.055, 20, 20]} />
+          <meshStandardMaterial color="#f2c14e" metalness={0.95} roughness={0.15} />
+        </mesh>
+        {[0, Math.PI / 2].map((r) => (
+          <mesh key={r} position={[0, 0.24, 0]} rotation={[0, r, 0]}>
+            <boxGeometry args={[0.7, 0.018, 0.018]} />
+            <meshStandardMaterial color="#f2c14e" metalness={0.95} roughness={0.18} />
+          </mesh>
+        ))}
       </group>
 
       {/* Ball */}
       <group ref={ballRef}>
         <mesh castShadow>
-          <sphereGeometry args={[0.07, 16, 16]} />
-          <meshStandardMaterial color="#f5f5f5" metalness={0.3} roughness={0.15} />
+          <sphereGeometry args={[0.045, 24, 24]} />
+          <meshPhysicalMaterial color="#fdfdfb" roughness={0.08} clearcoat={1} metalness={0.05} />
         </mesh>
       </group>
 
       {/* Fixed pointer at world angle 0 (+Z) marking where results land */}
-      <mesh position={[0, 0.45, 1.45]} rotation={[Math.PI / 2, 0, 0]}>
-        <coneGeometry args={[0.1, 0.25, 4]} />
-        <meshStandardMaterial color="#f2c14e" metalness={0.5} roughness={0.3} />
+      <mesh position={[0, 0.4, 1.4]} rotation={[Math.PI / 2, 0, 0]}>
+        <coneGeometry args={[0.07, 0.18, 4]} />
+        <meshStandardMaterial color="#f2c14e" metalness={0.8} roughness={0.25} />
       </mesh>
     </group>
   );

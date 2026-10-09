@@ -13,21 +13,55 @@ interface LiveBall {
   color: string;
 }
 
-/** A single ball, lerping toward its current (x, y) target each frame so the
- * discrete per-row steps the page computes still read as smooth motion. */
-function Ball({ x, y, color }: { x: number; y: number; color: string }) {
-  const ref = useRef<THREE.Mesh>(null);
+const TRAIL = 6;
+
+/** A glossy ball that eases toward its (x, y) target with a little hop per row, a glow and a short trail,
+ * so every ball reads as its own object even when several share a row. */
+function Ball({ x, y, color, index }: { x: number; y: number; color: string; index: number }) {
+  const group = useRef<THREE.Group>(null);
+  const trail = useRef<THREE.Group>(null);
+  const hist = useRef<{ x: number; y: number }[]>([]);
+  const jx = ((index * 37) % 11) / 11 * 0.08 - 0.04;
+  const z = 0.14 + index * 0.012;
   useFrame(() => {
-    const m = ref.current;
-    if (!m) return;
-    m.position.x = THREE.MathUtils.lerp(m.position.x, x, 0.28);
-    m.position.y = THREE.MathUtils.lerp(m.position.y, y, 0.28);
+    const g = group.current;
+    if (!g) return;
+    const tx = x + jx;
+    g.position.x = THREE.MathUtils.lerp(g.position.x, tx, 0.22);
+    const dy = g.position.y - y;
+    g.position.y = THREE.MathUtils.lerp(g.position.y, y, 0.22);
+    // hop: a bounce proportional to how far the ball still has to fall
+    g.position.z = z + Math.min(0.06, Math.abs(dy) * 0.25);
+    const h = hist.current;
+    h.unshift({ x: g.position.x, y: g.position.y });
+    if (h.length > TRAIL * 2) h.pop();
+    const t = trail.current;
+    if (t) t.children.forEach((c, i) => {
+      const p = h[Math.min(h.length - 1, (i + 1) * 2 - 1)];
+      if (p) c.position.set(p.x - g.position.x, p.y - g.position.y, -0.01);
+    });
   });
   return (
-    <mesh ref={ref} position={[x, y, 0.12]} castShadow>
-      <sphereGeometry args={[0.1, 14, 14]} />
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.35} />
-    </mesh>
+    <>
+      <group ref={group} position={[x, y, z]}>
+        <mesh castShadow>
+          <sphereGeometry args={[0.115, 28, 28]} />
+          <meshPhysicalMaterial color={color} emissive={color} emissiveIntensity={0.55} roughness={0.12} clearcoat={1} metalness={0.2} />
+        </mesh>
+        <mesh scale={1.9}>
+          <sphereGeometry args={[0.115, 16, 16]} />
+          <meshBasicMaterial color={color} transparent opacity={0.16} depthWrite={false} toneMapped={false} />
+        </mesh>
+        <group ref={trail}>
+          {Array.from({ length: TRAIL }, (_, i) => (
+            <mesh key={i} scale={1 - i * 0.14}>
+              <sphereGeometry args={[0.07, 10, 10]} />
+              <meshBasicMaterial color={color} transparent opacity={0.32 - i * 0.045} depthWrite={false} toneMapped={false} />
+            </mesh>
+          ))}
+        </group>
+      </group>
+    </>
   );
 }
 
@@ -40,10 +74,13 @@ export default function PlinkoScene3D({
   rows,
   liveBalls,
   bucketCount,
+  bucketColors,
 }: {
   rows: number;
   liveBalls: LiveBall[];
   bucketCount: number;
+  /** Optional per-bucket colours (e.g. by payout). */
+  bucketColors?: string[];
 }) {
   const topY = (rows / 2) * ROW_SPACING + 0.4;
   const bottomY = topY - 0.4 - (rows - 1) * ROW_SPACING;
@@ -74,13 +111,20 @@ export default function PlinkoScene3D({
       {/* backboard */}
       <mesh position={[0, (topY + bottomY) / 2, -0.2]}>
         <boxGeometry args={[BOARD_HALF_WIDTH * 2 + 0.6, topY - bottomY + 1, 0.12]} />
-        <meshStandardMaterial color="#171c38" />
+        <meshStandardMaterial color="#0c1024" roughness={0.9} />
       </mesh>
+      {/* chrome side rails */}
+      {[-1, 1].map((sd) => (
+        <mesh key={sd} position={[sd * (BOARD_HALF_WIDTH + 0.3), (topY + bottomY) / 2, 0.05]}>
+          <boxGeometry args={[0.12, topY - bottomY + 1, 0.3]} />
+          <meshStandardMaterial color="#c9ced8" metalness={0.9} roughness={0.2} />
+        </mesh>
+      ))}
 
       {pegs.map((p, i) => (
-        <mesh key={i} position={[p.x, p.y, 0.05]}>
-          <sphereGeometry args={[0.07, 10, 10]} />
-          <meshStandardMaterial color="#ffd54a" metalness={0.6} roughness={0.3} />
+        <mesh key={i} position={[p.x, p.y, 0.06]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.045, 0.045, 0.16, 12]} />
+          <meshStandardMaterial color="#e8ecf4" metalness={0.95} roughness={0.15} />
         </mesh>
       ))}
 
@@ -94,11 +138,21 @@ export default function PlinkoScene3D({
         <boxGeometry args={[BOARD_HALF_WIDTH * 2 + 0.2, 0.12, 0.14]} />
         <meshStandardMaterial color="#34d399" emissive="#0d2e1f" emissiveIntensity={0.4} />
       </mesh>
+      {bucketColors && bucketColors.map((c, i) => {
+        const x0 = bucketDividers[i], x1 = bucketDividers[i + 1];
+        if (x1 === undefined) return null;
+        return (
+          <mesh key={i} position={[(x0 + x1) / 2, bottomY - 0.12, 0.0]}>
+            <boxGeometry args={[Math.abs(x1 - x0) - 0.04, 0.3, 0.05]} />
+            <meshStandardMaterial color={c} emissive={c} emissiveIntensity={0.45} roughness={0.4} />
+          </mesh>
+        );
+      })}
 
       {liveBalls.map((b, i) => {
         const worldX = ((b.x - 50) / 50) * BOARD_HALF_WIDTH;
         const worldY = b.row < 0 ? topY + 0.35 : topY - 0.4 - b.row * ROW_SPACING;
-        return <Ball key={i} x={worldX} y={worldY} color={b.color} />;
+        return <Ball key={i} index={i} x={worldX} y={worldY} color={b.color} />;
       })}
     </group>
   );

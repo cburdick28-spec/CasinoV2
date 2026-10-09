@@ -8,7 +8,7 @@ import { useActionHandler, useGameController } from "./useGameController";
 import { useGameSession, useGameView, type GameBar, type Vec3 } from "./bridge";
 
 /** Facing the peg board; the board fills the upper-middle of the view. */
-export const camera: { eye: Vec3; target: Vec3 } = { eye: [0, 1.45, 3.7], target: [0, 0.02, 0] };
+export const camera: { eye: Vec3; target: Vec3 } = { eye: [0, 1.6, 2.6], target: [0, 1.05, 0] };
 
 const ROWS = 12;
 const MAX_BALLS = 10;
@@ -22,6 +22,15 @@ const MULTIPLIERS: Record<Risk, number[]> = {
   medium: [24, 8, 3, 1.5, 0.7, 0.4, 0.2, 0.4, 0.7, 1.5, 3, 8, 24],
   high: [76, 15, 6, 2, 0.5, 0.2, 0.1, 0.2, 0.5, 2, 6, 15, 76],
 };
+
+/** Bucket colour by payout: red = jackpot, amber/green = win, blue = loss. */
+function multColor(m: number): string {
+  if (m >= 10) return "#ef4444";
+  if (m >= 3) return "#f97316";
+  if (m >= 1.2) return "#eab308";
+  if (m >= 1) return "#22c55e";
+  return "#3b82f6";
+}
 
 const money = (n: number) => `$${n.toLocaleString()}`;
 
@@ -189,7 +198,7 @@ export function Stage() {
   const bottomY = (ROWS / 2) * SPACING + 0.4 - 0.4 - (ROWS - 1) * SPACING;
   return (
     <group position={[0, 1.41, 0.3]} scale={0.3}>
-      <PlinkoScene3D key={v?.seq ?? 0} rows={ROWS} liveBalls={v?.liveBalls ?? []} bucketCount={table.length} />
+      <PlinkoScene3D key={v?.seq ?? 0} rows={ROWS} liveBalls={v?.liveBalls ?? []} bucketCount={table.length} bucketColors={table.map(multColor)} />
       <Suspense fallback={null}>
         <group position={[0, -0.9, 0]}>
           {table.map((m, i) => {
